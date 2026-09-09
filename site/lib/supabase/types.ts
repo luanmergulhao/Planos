@@ -352,7 +352,12 @@ export type Database = {
         ];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      toggle_comment_resolved: {
+        Args: { comment_id: string; new_resolved: boolean };
+        Returns: void;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

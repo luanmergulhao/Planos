@@ -6,4 +6,6 @@ export type CommentEntry = {
   mentioned_user_ids: string[];
   created_at: string;
   author: TeamProfile;
+  parent_comment_id: string | null;
+  resolved: boolean;
 };

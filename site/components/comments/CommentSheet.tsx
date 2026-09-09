@@ -8,6 +8,29 @@ import { CommentComposer } from "@/components/comments/CommentComposer";
 import type { CommentEntry } from "@/components/comments/types";
 import type { TeamProfile } from "@/components/plano/types";
 
+const COMMENT_SELECT =
+  "id, body, mentioned_user_ids, created_at, parent_comment_id, resolved, profiles(id, full_name, email)";
+
+function toCommentEntry(row: {
+  id: string;
+  body: string;
+  mentioned_user_ids: string[];
+  created_at: string;
+  parent_comment_id: string | null;
+  resolved: boolean;
+  profiles: TeamProfile | TeamProfile[];
+}): CommentEntry {
+  return {
+    id: row.id,
+    body: row.body,
+    mentioned_user_ids: row.mentioned_user_ids,
+    created_at: row.created_at,
+    parent_comment_id: row.parent_comment_id,
+    resolved: row.resolved,
+    author: (Array.isArray(row.profiles) ? row.profiles[0] : row.profiles) as TeamProfile,
+  };
+}
+
 export function CommentSheet({
   planoId,
   itemId,
@@ -32,20 +55,12 @@ export function CommentSheet({
       setLoading(true);
       const { data } = await supabase
         .from("comments")
-        .select("id, body, mentioned_user_ids, created_at, profiles(id, full_name, email)")
+        .select(COMMENT_SELECT)
         .eq("plano_item_id", itemId)
         .order("created_at", { ascending: true });
 
       if (!cancelled) {
-        setComments(
-          (data ?? []).map((row) => ({
-            id: row.id,
-            body: row.body,
-            mentioned_user_ids: row.mentioned_user_ids,
-            created_at: row.created_at,
-            author: (Array.isArray(row.profiles) ? row.profiles[0] : row.profiles) as TeamProfile,
-          }))
-        );
+        setComments((data ?? []).map(toCommentEntry));
         setLoading(false);
       }
     }
@@ -56,7 +71,7 @@ export function CommentSheet({
     };
   }, [itemId, supabase]);
 
-  async function handleSubmit(body: string, mentionedUserIds: string[]) {
+  async function insertComment(body: string, mentionedUserIds: string[], parentCommentId: string | null) {
     const { data, error } = await supabase
       .from("comments")
       .insert({
@@ -65,22 +80,25 @@ export function CommentSheet({
         author_id: currentUserId,
         body,
         mentioned_user_ids: mentionedUserIds,
+        parent_comment_id: parentCommentId,
       })
-      .select("id, body, mentioned_user_ids, created_at, profiles(id, full_name, email)")
+      .select(COMMENT_SELECT)
       .single();
 
     if (!error && data) {
-      setComments((prev) => [
-        ...prev,
-        {
-          id: data.id,
-          body: data.body,
-          mentioned_user_ids: data.mentioned_user_ids,
-          created_at: data.created_at,
-          author: (Array.isArray(data.profiles) ? data.profiles[0] : data.profiles) as TeamProfile,
-        },
-      ]);
+      setComments((prev) => [...prev, toCommentEntry(data)]);
     }
+  }
+
+  async function handleReply(parentCommentId: string, body: string, mentionedUserIds: string[]) {
+    await insertComment(body, mentionedUserIds, parentCommentId);
+  }
+
+  async function handleToggleResolved(commentId: string, resolved: boolean) {
+    setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, resolved } : c)));
+    // RPC em vez de update direto: resolver precisa valer pra qualquer um
+    // com acesso ao Plano, não só o autor do comentário (ver migration 0006).
+    await supabase.rpc("toggle_comment_resolved", { comment_id: commentId, new_resolved: resolved });
   }
 
   return (
@@ -92,9 +110,14 @@ export function CommentSheet({
         {loading ? (
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : (
-          <CommentThread comments={comments} teamProfiles={teamProfiles} />
+          <CommentThread
+            comments={comments}
+            teamProfiles={teamProfiles}
+            onReply={handleReply}
+            onToggleResolved={handleToggleResolved}
+          />
         )}
-        <CommentComposer teamProfiles={teamProfiles} onSubmit={handleSubmit} />
+        <CommentComposer teamProfiles={teamProfiles} onSubmit={(body, mentioned) => insertComment(body, mentioned, null)} />
       </SheetContent>
     </Sheet>
   );

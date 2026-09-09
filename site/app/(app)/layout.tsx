@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth/current-user";
 import { HeartbeatPing } from "@/components/time/HeartbeatPing";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -53,6 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </nav>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <NotificationBell initialCount={unreadCount ?? 0} />
             <Link href="/perfil">
               <Avatar className="size-8">

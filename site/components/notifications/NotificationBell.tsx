@@ -29,6 +29,7 @@ export function NotificationBell({ initialCount }: { initialCount: number }) {
       variant="ghost"
       size="icon"
       className="relative"
+      nativeButton={false}
       render={
         <Link href="/notificacoes">
           <Bell className="size-5" />

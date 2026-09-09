@@ -9,9 +9,11 @@ import type { TeamProfile } from "@/components/plano/types";
 export function CommentComposer({
   teamProfiles,
   onSubmit,
+  compact = false,
 }: {
   teamProfiles: TeamProfile[];
   onSubmit: (body: string, mentionedUserIds: string[]) => Promise<void> | void;
+  compact?: boolean;
 }) {
   const [body, setBody] = useState("");
   const [mentioned, setMentioned] = useState<string[]>([]);
@@ -27,17 +29,18 @@ export function CommentComposer({
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t pt-3">
+    <div className={compact ? "flex flex-col gap-2" : "flex flex-col gap-2 border-t pt-3"}>
       <Textarea
-        placeholder="Deixe um comentário..."
+        placeholder={compact ? "Responder..." : "Deixe um comentário..."}
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        className="min-h-16"
+        autoFocus={compact}
+        className={compact ? "min-h-10" : "min-h-16"}
       />
       <div className="flex items-center justify-between gap-2">
         <MentionPicker teamProfiles={teamProfiles} selectedIds={mentioned} onChange={setMentioned} />
         <Button size="sm" onClick={handleSubmit} disabled={sending || !body.trim()}>
-          Comentar
+          {compact ? "Responder" : "Comentar"}
         </Button>
       </div>
     </div>
