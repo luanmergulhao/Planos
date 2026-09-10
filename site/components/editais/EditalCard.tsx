@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getDeadlineUrgency, URGENCY_LABEL } from "@/lib/time/urgency";
 import { FASE_LABEL } from "@/lib/editais";
 import { TRIAGEM_FIELDS } from "@/lib/ai/triagem";
+import { TIPO_RESULTADO_LABEL, type TipoResultado } from "@/lib/ai/resultados";
 import type { EditalFase, EditalRow } from "@/components/editais/types";
 
 export function EditalCard({
@@ -32,6 +33,14 @@ export function EditalCard({
 
   const respostas = edital.respostas as Record<string, string> | null;
   const hasTriagem = respostas && Object.keys(respostas).length > 0;
+
+  const resultadoInfo = edital.resultado_info as {
+    tipo_resultado?: TipoResultado;
+    data_divulgacao?: string | null;
+    publicacao?: string | null;
+    detalhamento?: string | null;
+    link?: string | null;
+  } | null;
 
   const urgency =
     edital.fase === "CONCLUIDO" || edital.fase === "DESCARTADO" ? null : getDeadlineUrgency(edital.deadline_at);
@@ -129,6 +138,24 @@ export function EditalCard({
                 );
               })}
             </dl>
+          )}
+        </div>
+      )}
+
+      {resultadoInfo?.tipo_resultado && (
+        <div className="ml-[9.5rem] flex flex-col gap-1 rounded-md bg-muted/50 p-3 text-sm">
+          <div className="flex items-center gap-2">
+            <Badge>{TIPO_RESULTADO_LABEL[resultadoInfo.tipo_resultado]}</Badge>
+            {resultadoInfo.data_divulgacao && (
+              <span className="text-xs text-muted-foreground">Divulgado em {resultadoInfo.data_divulgacao}</span>
+            )}
+          </div>
+          {resultadoInfo.publicacao && <p>{resultadoInfo.publicacao}</p>}
+          {resultadoInfo.detalhamento && <p className="text-muted-foreground">{resultadoInfo.detalhamento}</p>}
+          {resultadoInfo.link && (
+            <a href={resultadoInfo.link} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+              Ver publicação
+            </a>
           )}
         </div>
       )}

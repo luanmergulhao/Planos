@@ -5,10 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 import { EditalCard } from "@/components/editais/EditalCard";
 import { NovoEditalDialog } from "@/components/editais/NovoEditalDialog";
 import { TriagemIADialog } from "@/components/editais/TriagemIADialog";
+import { BuscarResultadosDialog } from "@/components/editais/BuscarResultadosDialog";
 import { EditalCommentSheet } from "@/components/editais/EditalCommentSheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ACTIVE_FASES } from "@/lib/editais";
+import type { ResultadoFinding } from "@/lib/ai/resultados";
 import type { EditalRow } from "@/components/editais/types";
 import type { TeamProfile } from "@/components/plano/types";
 
@@ -61,6 +63,14 @@ export function EditaisBoard({
     await supabase.from("editais").delete().eq("id", id);
   }
 
+  async function handleSaveResultado(editalId: string, resultadoInfo: ResultadoFinding, markConcluded: boolean) {
+    const patch: Partial<EditalRow> = { resultado_info: resultadoInfo };
+    if (markConcluded) patch.fase = "CONCLUIDO";
+    await handleUpdate(editalId, patch);
+  }
+
+  const aguardandoResultado = editais.filter((e) => e.fase === "D" || e.fase === "DP").length;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
@@ -69,6 +79,7 @@ export function EditaisBoard({
           <p className="text-muted-foreground">Quadro compartilhado — a equipe toda vê e edita junto.</p>
         </div>
         <div className="flex gap-2">
+          <BuscarResultadosDialog disabled={aguardandoResultado === 0} onSave={handleSaveResultado} />
           <TriagemIADialog onCreate={handleCreate} />
           <NovoEditalDialog onCreate={handleCreate} />
         </div>

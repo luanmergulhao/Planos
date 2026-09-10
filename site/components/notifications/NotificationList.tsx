@@ -23,6 +23,7 @@ const TYPE_LABEL: Record<string, string> = {
   deadline_reminder: "Prazo",
   daily_digest: "Resumo diário",
   share_granted: "Acesso liberado",
+  resultado_encontrado: "Resultado de edital",
 };
 
 function timeAgo(iso: string) {

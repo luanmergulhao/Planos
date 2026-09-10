@@ -20,7 +20,8 @@ export type NotificationType =
   | "comment_reply"
   | "deadline_reminder"
   | "daily_digest"
-  | "share_granted";
+  | "share_granted"
+  | "resultado_encontrado";
 
 export type Database = {
   public: {
@@ -323,6 +324,7 @@ export type Database = {
           deadline_at: string | null;
           observacoes: string | null;
           respostas: Record<string, unknown>;
+          resultado_info: Record<string, unknown> | null;
           created_by: string | null;
           updated_by: string | null;
           created_at: string;

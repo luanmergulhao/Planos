@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeDigest } from "@/lib/digest";
 import { computeEditaisDigest, ACTIVE_FASES } from "@/lib/editais";
+import { searchResultados, type ResultadoFinding } from "@/lib/ai/resultados";
 import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
 
 export const maxDuration = 60;
@@ -161,6 +162,61 @@ async function sendDailyDigests(admin: ReturnType<typeof createAdminClient>) {
   return sent;
 }
 
+// Prompt "R" do manual, rodando sozinho 1x/dia: procura resultado de
+// editais já enviados (D/DP) e avisa o time só quando acha algo novo
+// (compara com o que já tinha salvo, pra não notificar repetido todo
+// dia a mesma publicação).
+async function searchAndNotifyResultados(admin: ReturnType<typeof createAdminClient>) {
+  const { data: editais } = await admin
+    .from("editais")
+    .select("id, titulo, link, resultado_info")
+    .in("fase", ["D", "DP"]);
+
+  if (!editais || editais.length === 0) return 0;
+
+  let notified = 0;
+
+  try {
+    const findings = await searchResultados(
+      editais.map((e) => ({ id: e.id, titulo: e.titulo, link: e.link }))
+    );
+    const { data: teamProfiles } = await admin.from("profiles").select("id");
+
+    for (const finding of findings) {
+      if (finding.tipo_resultado === "nao_localizado") continue;
+
+      const edital = editais.find((e) => e.id === finding.id);
+      if (!edital) continue;
+
+      const previous = edital.resultado_info as ResultadoFinding | null;
+      const isNew =
+        !previous ||
+        previous.publicacao !== finding.publicacao ||
+        previous.data_divulgacao !== finding.data_divulgacao;
+      if (!isNew) continue;
+
+      await admin.from("editais").update({ resultado_info: finding }).eq("id", edital.id);
+
+      await admin.from("notifications").insert(
+        (teamProfiles ?? []).map((profile) => ({
+          user_id: profile.id,
+          type: "resultado_encontrado" as const,
+          title: `Resultado encontrado: ${edital.titulo}`,
+          body: finding.detalhamento || finding.publicacao || "Confira o resultado encontrado.",
+          link_path: `/editais?item=${edital.id}`,
+        }))
+      );
+
+      notified++;
+    }
+  } catch {
+    // busca de resultado é best-effort (depende da IA/internet) — se
+    // falhar, não derruba o resto do cron
+  }
+
+  return notified;
+}
+
 async function sweepStaleSessions(admin: ReturnType<typeof createAdminClient>) {
   const cutoff = new Date(Date.now() - HEARTBEAT_TIMEOUT_MINUTES * 60 * 1000).toISOString();
 
@@ -189,12 +245,14 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
 
-  const [planoDeadlinesNotified, editalDeadlinesNotified, digestsSent, sessionsClosed] = await Promise.all([
-    scanPlanoDeadlines(admin),
-    scanEditalDeadlines(admin),
-    sendDailyDigests(admin),
-    sweepStaleSessions(admin),
-  ]);
+  const [planoDeadlinesNotified, editalDeadlinesNotified, digestsSent, sessionsClosed, resultadosEncontrados] =
+    await Promise.all([
+      scanPlanoDeadlines(admin),
+      scanEditalDeadlines(admin),
+      sendDailyDigests(admin),
+      sweepStaleSessions(admin),
+      searchAndNotifyResultados(admin),
+    ]);
 
   return NextResponse.json({
     ok: true,
@@ -202,5 +260,6 @@ export async function GET(request: Request) {
     editalDeadlinesNotified,
     digestsSent,
     sessionsClosed,
+    resultadosEncontrados,
   });
 }
