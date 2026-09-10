@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { EditalCard } from "@/components/editais/EditalCard";
 import { NovoEditalDialog } from "@/components/editais/NovoEditalDialog";
+import { TriagemIADialog } from "@/components/editais/TriagemIADialog";
 import { EditalCommentSheet } from "@/components/editais/EditalCommentSheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 import { ACTIVE_FASES } from "@/lib/editais";
 import type { EditalRow } from "@/components/editais/types";
 import type { TeamProfile } from "@/components/plano/types";
@@ -36,13 +38,14 @@ export function EditaisBoard({
   const active = editais.filter((e) => ACTIVE_FASES.includes(e.fase)).sort(sortByDeadline);
   const finished = editais.filter((e) => !ACTIVE_FASES.includes(e.fase)).sort(sortByDeadline);
 
-  async function handleCreate(input: { titulo: string; link: string | null; deadline_at: string | null }) {
+  async function handleCreate(input: Partial<EditalRow> & { titulo: string }) {
     const { data, error } = await supabase
       .from("editais")
       .insert({ ...input, created_by: currentUserId, updated_by: currentUserId })
       .select("*")
       .single();
     if (!error && data) setEditais((prev) => [...prev, data]);
+    if (error) toast.error("Não deu pra criar: " + error.message);
   }
 
   async function handleUpdate(id: string, patch: Partial<EditalRow>) {
@@ -65,7 +68,10 @@ export function EditaisBoard({
           <h1 className="text-2xl font-semibold">Triagem de Editais</h1>
           <p className="text-muted-foreground">Quadro compartilhado — a equipe toda vê e edita junto.</p>
         </div>
-        <NovoEditalDialog onCreate={handleCreate} />
+        <div className="flex gap-2">
+          <TriagemIADialog onCreate={handleCreate} />
+          <NovoEditalDialog onCreate={handleCreate} />
+        </div>
       </div>
 
       <Card>

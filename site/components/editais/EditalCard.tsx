@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, MessageSquare, Trash2 } from "lucide-react";
+import { ExternalLink, MessageSquare, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getDeadlineUrgency, URGENCY_LABEL } from "@/lib/time/urgency";
 import { FASE_LABEL } from "@/lib/editais";
+import { TRIAGEM_FIELDS } from "@/lib/ai/triagem";
 import type { EditalFase, EditalRow } from "@/components/editais/types";
 
 export function EditalCard({
@@ -27,6 +28,10 @@ export function EditalCard({
   const [titulo, setTitulo] = useState(edital.titulo);
   const [link, setLink] = useState(edital.link ?? "");
   const [observacoes, setObservacoes] = useState(edital.observacoes ?? "");
+  const [showTriagem, setShowTriagem] = useState(false);
+
+  const respostas = edital.respostas as Record<string, string> | null;
+  const hasTriagem = respostas && Object.keys(respostas).length > 0;
 
   const urgency =
     edital.fase === "CONCLUIDO" || edital.fase === "DESCARTADO" ? null : getDeadlineUrgency(edital.deadline_at);
@@ -100,6 +105,33 @@ export function EditalCard({
         onChange={(e) => setObservacoes(e.target.value)}
         onBlur={() => onUpdate({ observacoes: observacoes || null })}
       />
+
+      {hasTriagem && (
+        <div className="ml-[9.5rem]">
+          <button
+            type="button"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setShowTriagem((v) => !v)}
+          >
+            <Sparkles className="size-3.5" />
+            {showTriagem ? "Esconder" : "Ver"} respostas da triagem
+          </button>
+          {showTriagem && (
+            <dl className="mt-2 flex flex-col gap-2 rounded-md bg-muted/50 p-3 text-sm">
+              {TRIAGEM_FIELDS.map((field) => {
+                const value = respostas?.[field.key];
+                if (!value) return null;
+                return (
+                  <div key={field.key}>
+                    <dt className="text-xs font-medium text-muted-foreground">{field.label}</dt>
+                    <dd className="whitespace-pre-wrap">{value}</dd>
+                  </div>
+                );
+              })}
+            </dl>
+          )}
+        </div>
+      )}
     </div>
   );
 }

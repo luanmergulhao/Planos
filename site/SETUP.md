@@ -29,6 +29,8 @@ cada arquivo em `supabase/migrations/`:
 3. `0003_time_logs.sql`
 4. `0004_comments_notifications.sql`
 5. `0005_rls_policies.sql`
+6. `0006_comment_resolve_rpc.sql`
+7. `0007_editais.sql`
 
 (Alternativa, se preferir linha de comando:
 `npx supabase link --project-ref <ref>` seguido de
@@ -71,6 +73,14 @@ Abra `http://localhost:3000`.
    pro seu próprio email de cadastro no Resend. Pra mandar pra
    qualquer pessoa da equipe, depois verifique um domínio próprio em
    **Domains** e troque `RESEND_FROM_EMAIL`.
+
+## 5.1. Triagem com IA (Gemini)
+
+1. Vá em [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+   (login com Google) → **Create API key**. Tem free tier.
+2. Cola em `GEMINI_API_KEY` no `.env.local` (e depois no Vercel também).
+3. Sem essa chave, o resto do site funciona normal — só o botão
+   "Triagem com IA" na tela de Editais não funciona.
 
 ## 6. Deploy (Vercel)
 
