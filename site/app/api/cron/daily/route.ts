@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeDigest } from "@/lib/digest";
+import { computeEditaisDigest, ACTIVE_FASES } from "@/lib/editais";
 import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
 
 export const maxDuration = 60;
@@ -17,7 +18,11 @@ function addDaysISO(days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-async function scanDeadlines(admin: ReturnType<typeof createAdminClient>) {
+function whenLabel(daysBefore: number) {
+  return daysBefore === 0 ? "vence hoje" : `vence em ${daysBefore} dia${daysBefore > 1 ? "s" : ""}`;
+}
+
+async function scanPlanoDeadlines(admin: ReturnType<typeof createAdminClient>) {
   const sentOn = todayISO();
   let notified = 0;
 
@@ -45,13 +50,12 @@ async function scanDeadlines(admin: ReturnType<typeof createAdminClient>) {
       if (!plano) continue;
 
       const texto = (item.content as { texto?: string })?.texto ?? "uma tarefa";
-      const when = daysBefore === 0 ? "vence hoje" : `vence em ${daysBefore} dia${daysBefore > 1 ? "s" : ""}`;
 
       await admin.from("notifications").insert({
         user_id: plano.owner_id,
         type: "deadline_reminder",
         title: `Prazo: ${texto}`,
-        body: `"${texto}" ${when}, no Plano "${plano.title}".`,
+        body: `"${texto}" ${whenLabel(daysBefore)}, no Plano "${plano.title}".`,
         link_path: `/planos/${item.plano_id}?item=${item.id}`,
         source_plano_item_id: item.id,
       });
@@ -69,7 +73,61 @@ async function scanDeadlines(admin: ReturnType<typeof createAdminClient>) {
   return notified;
 }
 
+// Editais são compartilhadas (não têm dono) — o lembrete vai pro time
+// todo, não só pra quem criou o registro.
+async function scanEditalDeadlines(admin: ReturnType<typeof createAdminClient>) {
+  const sentOn = todayISO();
+  let notified = 0;
+
+  const { data: teamProfiles } = await admin.from("profiles").select("id");
+  if (!teamProfiles || teamProfiles.length === 0) return 0;
+
+  for (const daysBefore of DEADLINE_REMINDER_OFFSETS_DAYS) {
+    const targetDate = addDaysISO(daysBefore);
+
+    const { data: editaisDue } = await admin
+      .from("editais")
+      .select("id, titulo")
+      .eq("deadline_at", targetDate)
+      .in("fase", ACTIVE_FASES);
+
+    for (const edital of editaisDue ?? []) {
+      const { data: alreadySent } = await admin
+        .from("edital_deadline_notifications_log")
+        .select("edital_id")
+        .eq("edital_id", edital.id)
+        .eq("days_before", daysBefore)
+        .eq("sent_on", sentOn)
+        .maybeSingle();
+
+      if (alreadySent) continue;
+
+      await admin.from("notifications").insert(
+        teamProfiles.map((profile) => ({
+          user_id: profile.id,
+          type: "deadline_reminder" as const,
+          title: `Edital: ${edital.titulo}`,
+          body: `"${edital.titulo}" ${whenLabel(daysBefore)}.`,
+          link_path: `/editais?item=${edital.id}`,
+        }))
+      );
+
+      await admin.from("edital_deadline_notifications_log").insert({
+        edital_id: edital.id,
+        days_before: daysBefore,
+        sent_on: sentOn,
+      });
+
+      notified++;
+    }
+  }
+
+  return notified;
+}
+
 async function sendDailyDigests(admin: ReturnType<typeof createAdminClient>) {
+  const editaisDigest = await computeEditaisDigest(admin);
+
   const { data: users } = await admin
     .from("notification_preferences")
     .select("user_id")
@@ -79,13 +137,15 @@ async function sendDailyDigests(admin: ReturnType<typeof createAdminClient>) {
 
   for (const { user_id } of users ?? []) {
     const digest = await computeDigest(admin, user_id);
-    const total = digest.overdue.length + digest.dueWeek.length + digest.priority.length;
+    const total =
+      digest.overdue.length + digest.priority.length + editaisDigest.overdue.length + editaisDigest.week.length;
     if (total === 0) continue;
 
     const parts = [
-      digest.overdue.length > 0 ? `${digest.overdue.length} atrasado(s)` : null,
-      digest.dueWeek.length > 0 ? `${digest.dueWeek.length} vencendo essa semana` : null,
+      digest.overdue.length > 0 ? `${digest.overdue.length} tarefa(s) atrasada(s)` : null,
       digest.priority.length > 0 ? `${digest.priority.length} prioridade` : null,
+      editaisDigest.overdue.length > 0 ? `${editaisDigest.overdue.length} edital(is) atrasado(s)` : null,
+      editaisDigest.week.length > 0 ? `${editaisDigest.week.length} edital(is) vencendo essa semana` : null,
     ].filter(Boolean);
 
     await admin.from("notifications").insert({
@@ -129,11 +189,18 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
 
-  const [deadlinesNotified, digestsSent, sessionsClosed] = await Promise.all([
-    scanDeadlines(admin),
+  const [planoDeadlinesNotified, editalDeadlinesNotified, digestsSent, sessionsClosed] = await Promise.all([
+    scanPlanoDeadlines(admin),
+    scanEditalDeadlines(admin),
     sendDailyDigests(admin),
     sweepStaleSessions(admin),
   ]);
 
-  return NextResponse.json({ ok: true, deadlinesNotified, digestsSent, sessionsClosed });
+  return NextResponse.json({
+    ok: true,
+    planoDeadlinesNotified,
+    editalDeadlinesNotified,
+    digestsSent,
+    sessionsClosed,
+  });
 }

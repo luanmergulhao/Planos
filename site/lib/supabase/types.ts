@@ -14,6 +14,7 @@ export type PlanoItemContent = {
 export type ItemStatus = "pendente" | "em_andamento" | "concluido" | "urgente";
 export type SharePermission = "view" | "edit";
 export type ProfileRole = "member" | "manager";
+export type EditalFase = "T" | "D" | "DP" | "CONCLUIDO" | "DESCARTADO";
 export type NotificationType =
   | "mention"
   | "comment_reply"
@@ -313,6 +314,81 @@ export type Database = {
           },
         ];
       };
+      editais: {
+        Row: {
+          id: string;
+          titulo: string;
+          link: string | null;
+          fase: EditalFase;
+          deadline_at: string | null;
+          observacoes: string | null;
+          respostas: Record<string, unknown>;
+          created_by: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["editais"]["Row"]> & { titulo: string };
+        Update: Partial<Database["public"]["Tables"]["editais"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "editais_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      edital_comments: {
+        Row: {
+          id: string;
+          edital_id: string;
+          author_id: string;
+          body: string;
+          mentioned_user_ids: string[];
+          parent_comment_id: string | null;
+          resolved: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["edital_comments"]["Row"]> & {
+          edital_id: string;
+          author_id: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["edital_comments"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "edital_comments_edital_id_fkey";
+            columns: ["edital_id"];
+            isOneToOne: false;
+            referencedRelation: "editais";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "edital_comments_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      edital_deadline_notifications_log: {
+        Row: { edital_id: string; days_before: number; sent_on: string };
+        Insert: Database["public"]["Tables"]["edital_deadline_notifications_log"]["Row"];
+        Update: Partial<Database["public"]["Tables"]["edital_deadline_notifications_log"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "edital_deadline_notifications_log_edital_id_fkey";
+            columns: ["edital_id"];
+            isOneToOne: false;
+            referencedRelation: "editais";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       daily_hours: {
@@ -354,6 +430,10 @@ export type Database = {
     };
     Functions: {
       toggle_comment_resolved: {
+        Args: { comment_id: string; new_resolved: boolean };
+        Returns: void;
+      };
+      toggle_edital_comment_resolved: {
         Args: { comment_id: string; new_resolved: boolean };
         Returns: void;
       };

@@ -1,16 +1,11 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth/current-user";
-import { computeDigest } from "@/lib/digest";
+import { computeDigest, type DigestItem } from "@/lib/digest";
+import { computeEditaisDigest } from "@/lib/editais";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-function ItemList({
-  items,
-  emptyText,
-}: {
-  items: Awaited<ReturnType<typeof computeDigest>>["overdue"];
-  emptyText: string;
-}) {
+function ItemList({ items, emptyText }: { items: DigestItem[]; emptyText: string }) {
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyText}</p>;
   }
@@ -19,14 +14,14 @@ function ItemList({
       {items.map((item) => (
         <li key={item.id}>
           <Link
-            href={`/planos/${item.plano_id}?item=${item.id}`}
+            href={item.href}
             className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm hover:bg-muted"
           >
             <span className="flex items-center gap-2">
               <Badge variant="outline">{item.code}</Badge>
               <span>{item.texto}</span>
             </span>
-            <span className="text-xs text-muted-foreground">{item.plano_title}</span>
+            <span className="text-xs text-muted-foreground">{item.sourceLabel}</span>
           </Link>
         </li>
       ))}
@@ -36,7 +31,12 @@ function ItemList({
 
 export default async function DashboardPage() {
   const { supabase, user, profile } = await requireProfile();
-  const digest = await computeDigest(supabase, user.id);
+  const [digest, editaisDigest] = await Promise.all([
+    computeDigest(supabase, user.id),
+    computeEditaisDigest(supabase),
+  ]);
+
+  const overdue = [...digest.overdue, ...editaisDigest.overdue];
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
             <CardTitle className="text-base text-destructive">Atrasado</CardTitle>
           </CardHeader>
           <CardContent>
-            <ItemList items={digest.overdue} emptyText="Nada atrasado." />
+            <ItemList items={overdue} emptyText="Nada atrasado." />
           </CardContent>
         </Card>
         <Card>
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
             <CardTitle className="text-base">Editais dessa semana</CardTitle>
           </CardHeader>
           <CardContent>
-            <ItemList items={digest.dueWeek} emptyText="Sem prazos nos próximos 7 dias." />
+            <ItemList items={editaisDigest.week} emptyText="Sem prazos nos próximos 7 dias." />
           </CardContent>
         </Card>
         <Card>
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
             <CardTitle className="text-base">Editais desse mês</CardTitle>
           </CardHeader>
           <CardContent>
-            <ItemList items={digest.dueMonth} emptyText="Sem prazos no resto do mês." />
+            <ItemList items={editaisDigest.month} emptyText="Sem prazos no resto do mês." />
           </CardContent>
         </Card>
         <Card>

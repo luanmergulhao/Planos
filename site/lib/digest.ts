@@ -1,27 +1,26 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { itemCode } from "@/lib/planos/categories";
-import { getDeadlineUrgency, MONTH_DAYS } from "@/lib/time/urgency";
+import { getDeadlineUrgency } from "@/lib/time/urgency";
 
 export type DigestItem = {
   id: string;
   code: string;
   texto: string;
   deadline_at: string | null;
-  status: string;
-  plano_id: string;
-  plano_title: string;
+  href: string;
+  sourceLabel: string;
 };
 
 export type Digest = {
   overdue: DigestItem[];
-  dueWeek: DigestItem[];
-  dueMonth: DigestItem[];
   priority: DigestItem[];
 };
 
-// Usado tanto pelo painel (Server Component, na hora) quanto pelo cron
-// diário (push de notificação/email) — mesma lógica, duas chamadas.
+// Resumo pessoal (tarefas dentro dos Planos) — usado tanto pelo painel
+// (Server Component, na hora) quanto pelo cron diário (push de
+// notificação/email) — mesma lógica, duas chamadas. As editais
+// compartilhadas têm resumo próprio, ver lib/editais.ts.
 export async function computeDigest(
   supabase: SupabaseClient<Database>,
   userId: string
@@ -35,13 +34,11 @@ export async function computeDigest(
   ];
 
   if (planoIds.length === 0) {
-    return { overdue: [], dueWeek: [], dueMonth: [], priority: [] };
+    return { overdue: [], priority: [] };
   }
 
   const today = new Date();
-  const monthAheadDate = new Date(today);
-  monthAheadDate.setDate(monthAheadDate.getDate() + MONTH_DAYS);
-  const monthAheadStr = monthAheadDate.toISOString().slice(0, 10);
+  const todayStr = today.toISOString().slice(0, 10);
 
   const { data: items } = await supabase
     .from("plano_items")
@@ -50,12 +47,10 @@ export async function computeDigest(
     )
     .in("plano_id", planoIds)
     .neq("status", "concluido")
-    .or(`deadline_at.lte.${monthAheadStr},status.eq.urgente`)
+    .or(`deadline_at.lte.${todayStr},status.eq.urgente`)
     .order("deadline_at", { ascending: true });
 
   const overdue: DigestItem[] = [];
-  const dueWeek: DigestItem[] = [];
-  const dueMonth: DigestItem[] = [];
   const priority: DigestItem[] = [];
 
   for (const raw of items ?? []) {
@@ -66,28 +61,16 @@ export async function computeDigest(
       code: itemCode(category?.code ?? "?", raw.item_number),
       texto: (raw.content as { texto?: string })?.texto ?? "(sem título)",
       deadline_at: raw.deadline_at,
-      status: raw.status,
-      plano_id: raw.plano_id,
-      plano_title: plano?.title ?? "Plano",
+      href: `/planos/${raw.plano_id}?item=${raw.id}`,
+      sourceLabel: plano?.title ?? "Plano",
     };
 
     if (raw.status === "urgente") {
       priority.push(entry);
-      continue;
-    }
-
-    switch (getDeadlineUrgency(raw.deadline_at, today)) {
-      case "overdue":
-        overdue.push(entry);
-        break;
-      case "week":
-        dueWeek.push(entry);
-        break;
-      case "month":
-        dueMonth.push(entry);
-        break;
+    } else if (getDeadlineUrgency(raw.deadline_at, today) === "overdue") {
+      overdue.push(entry);
     }
   }
 
-  return { overdue, dueWeek, dueMonth, priority };
+  return { overdue, priority };
 }

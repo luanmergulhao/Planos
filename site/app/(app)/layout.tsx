@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 const NAV_LINKS = [
   { href: "/", label: "Painel" },
   { href: "/planos", label: "Planos" },
+  { href: "/editais", label: "Editais" },
   { href: "/horas", label: "Horas" },
   { href: "/notificacoes", label: "Notificações" },
 ];
