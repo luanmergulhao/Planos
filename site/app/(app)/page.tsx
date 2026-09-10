@@ -45,7 +45,7 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground">Resumo do que precisa da sua atenção agora.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base text-destructive">Atrasado</CardTitle>
@@ -56,10 +56,18 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Vence logo</CardTitle>
+            <CardTitle className="text-base">Editais dessa semana</CardTitle>
           </CardHeader>
           <CardContent>
-            <ItemList items={digest.dueSoon} emptyText="Sem prazos nos próximos dias." />
+            <ItemList items={digest.dueWeek} emptyText="Sem prazos nos próximos 7 dias." />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Editais desse mês</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ItemList items={digest.dueMonth} emptyText="Sem prazos no resto do mês." />
           </CardContent>
         </Card>
         <Card>

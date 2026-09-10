@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { itemCode } from "@/lib/planos/categories";
+import { getDeadlineUrgency, URGENCY_LABEL } from "@/lib/time/urgency";
 import type { ItemRow, ItemStatus } from "@/components/plano/types";
 import type { PlanoItemContent } from "@/lib/supabase/types";
 
@@ -47,6 +48,12 @@ export function PlanoItemRow({
     onUpdate({ deadline_at: value || null, content: { ...content, data_prazo: value || null } });
   }
 
+  // Selo visual, calculado do prazo — não mexe no `status` manual.
+  const urgency =
+    item.status === "concluido" || item.status === "urgente"
+      ? null
+      : getDeadlineUrgency(item.deadline_at);
+
   return (
     <div className="flex flex-col gap-2 rounded-md border p-3">
       <div className="flex items-start gap-3">
@@ -81,6 +88,14 @@ export function PlanoItemRow({
           className="w-40"
           onChange={(e) => commitDeadline(e.target.value)}
         />
+        {urgency && (
+          <Badge
+            variant={urgency === "overdue" ? "destructive" : "outline"}
+            className={urgency === "week" ? "border-amber-500/50 text-amber-600 dark:text-amber-400" : undefined}
+          >
+            {URGENCY_LABEL[urgency]}
+          </Badge>
+        )}
         <Input
           placeholder="Link"
           value={link}

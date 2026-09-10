@@ -5,7 +5,7 @@ import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
 
 export const maxDuration = 60;
 
-const DEADLINE_REMINDER_OFFSETS_DAYS = [3, 1, 0];
+const DEADLINE_REMINDER_OFFSETS_DAYS = [7, 3, 1, 0];
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -79,12 +79,12 @@ async function sendDailyDigests(admin: ReturnType<typeof createAdminClient>) {
 
   for (const { user_id } of users ?? []) {
     const digest = await computeDigest(admin, user_id);
-    const total = digest.overdue.length + digest.dueSoon.length + digest.priority.length;
+    const total = digest.overdue.length + digest.dueWeek.length + digest.priority.length;
     if (total === 0) continue;
 
     const parts = [
       digest.overdue.length > 0 ? `${digest.overdue.length} atrasado(s)` : null,
-      digest.dueSoon.length > 0 ? `${digest.dueSoon.length} vencendo logo` : null,
+      digest.dueWeek.length > 0 ? `${digest.dueWeek.length} vencendo essa semana` : null,
       digest.priority.length > 0 ? `${digest.priority.length} prioridade` : null,
     ].filter(Boolean);
 

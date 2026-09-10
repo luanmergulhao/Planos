@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun, MonitorCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,23 @@ import {
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  // next-themes só sabe o tema real depois de montar no cliente — até lá,
+  // renderiza sempre o mesmo ícone (Sol) pra bater com o HTML do servidor
+  // e evitar erro de hidratação. Padrão recomendado pela própria lib.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- padrão oficial do next-themes pra evitar mismatch de hidratação
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" nativeButton={false}>
-            {resolvedTheme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+          <Button variant="ghost" size="icon">
+            {isDark ? <Moon className="size-4" /> : <Sun className="size-4" />}
           </Button>
         }
       />

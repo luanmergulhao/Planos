@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { itemCode } from "@/lib/planos/categories";
+import { getDeadlineUrgency, MONTH_DAYS } from "@/lib/time/urgency";
 
 export type DigestItem = {
   id: string;
@@ -14,11 +15,10 @@ export type DigestItem = {
 
 export type Digest = {
   overdue: DigestItem[];
-  dueSoon: DigestItem[];
+  dueWeek: DigestItem[];
+  dueMonth: DigestItem[];
   priority: DigestItem[];
 };
-
-const DUE_SOON_DAYS = 3;
 
 // Usado tanto pelo painel (Server Component, na hora) quanto pelo cron
 // diário (push de notificação/email) — mesma lógica, duas chamadas.
@@ -35,14 +35,13 @@ export async function computeDigest(
   ];
 
   if (planoIds.length === 0) {
-    return { overdue: [], dueSoon: [], priority: [] };
+    return { overdue: [], dueWeek: [], dueMonth: [], priority: [] };
   }
 
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const dueSoonDate = new Date(today);
-  dueSoonDate.setDate(dueSoonDate.getDate() + DUE_SOON_DAYS);
-  const dueSoonStr = dueSoonDate.toISOString().slice(0, 10);
+  const monthAheadDate = new Date(today);
+  monthAheadDate.setDate(monthAheadDate.getDate() + MONTH_DAYS);
+  const monthAheadStr = monthAheadDate.toISOString().slice(0, 10);
 
   const { data: items } = await supabase
     .from("plano_items")
@@ -51,11 +50,12 @@ export async function computeDigest(
     )
     .in("plano_id", planoIds)
     .neq("status", "concluido")
-    .or(`deadline_at.lte.${dueSoonStr},status.eq.urgente`)
+    .or(`deadline_at.lte.${monthAheadStr},status.eq.urgente`)
     .order("deadline_at", { ascending: true });
 
   const overdue: DigestItem[] = [];
-  const dueSoon: DigestItem[] = [];
+  const dueWeek: DigestItem[] = [];
+  const dueMonth: DigestItem[] = [];
   const priority: DigestItem[] = [];
 
   for (const raw of items ?? []) {
@@ -73,12 +73,21 @@ export async function computeDigest(
 
     if (raw.status === "urgente") {
       priority.push(entry);
-    } else if (raw.deadline_at && raw.deadline_at < todayStr) {
-      overdue.push(entry);
-    } else if (raw.deadline_at) {
-      dueSoon.push(entry);
+      continue;
+    }
+
+    switch (getDeadlineUrgency(raw.deadline_at, today)) {
+      case "overdue":
+        overdue.push(entry);
+        break;
+      case "week":
+        dueWeek.push(entry);
+        break;
+      case "month":
+        dueMonth.push(entry);
+        break;
     }
   }
 
-  return { overdue, dueSoon, priority };
+  return { overdue, dueWeek, dueMonth, priority };
 }
