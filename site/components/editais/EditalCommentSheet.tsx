@@ -35,11 +35,13 @@ export function EditalCommentSheet({
   editalId,
   teamProfiles,
   currentUserId,
+  isManager,
   onClose,
 }: {
   editalId: string;
   teamProfiles: TeamProfile[];
   currentUserId: string;
+  isManager: boolean;
   onClose: () => void;
 }) {
   const [comments, setComments] = useState<CommentEntry[]>([]);
@@ -108,6 +110,7 @@ export function EditalCommentSheet({
           <CommentThread
             comments={comments}
             teamProfiles={teamProfiles}
+            isManager={isManager}
             onReply={handleReply}
             onToggleResolved={handleToggleResolved}
           />

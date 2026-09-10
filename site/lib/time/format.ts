@@ -31,3 +31,12 @@ export function formatHours(totalHours: number): string {
   const m = Math.round((abs - h) * 60);
   return `${sign}${h}h${m.toString().padStart(2, "0")}`;
 }
+
+// Duração corrida (ms), pro cronômetro de tarefa — formato H:MM:SS.
+export function formatElapsedMs(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}

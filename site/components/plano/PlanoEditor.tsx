@@ -27,6 +27,7 @@ export function PlanoEditor({
   currentUserId,
   isOwner,
   canEdit,
+  isManager,
   ownerLabel,
   updatedByLabel,
 }: {
@@ -38,6 +39,7 @@ export function PlanoEditor({
   currentUserId: string;
   isOwner: boolean;
   canEdit: boolean;
+  isManager: boolean;
   ownerLabel: string;
   updatedByLabel: string | null;
 }) {
@@ -120,6 +122,7 @@ export function PlanoEditor({
           itemId={activeCommentItemId}
           teamProfiles={teamProfiles}
           currentUserId={currentUserId}
+          isManager={isManager}
           onClose={() => setActiveCommentItemId(null)}
         />
       )}

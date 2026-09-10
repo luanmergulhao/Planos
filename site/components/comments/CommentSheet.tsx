@@ -36,12 +36,14 @@ export function CommentSheet({
   itemId,
   teamProfiles,
   currentUserId,
+  isManager,
   onClose,
 }: {
   planoId: string;
   itemId: string;
   teamProfiles: TeamProfile[];
   currentUserId: string;
+  isManager: boolean;
   onClose: () => void;
 }) {
   const [comments, setComments] = useState<CommentEntry[]>([]);
@@ -96,8 +98,7 @@ export function CommentSheet({
 
   async function handleToggleResolved(commentId: string, resolved: boolean) {
     setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, resolved } : c)));
-    // RPC em vez de update direto: resolver precisa valer pra qualquer um
-    // com acesso ao Plano, não só o autor do comentário (ver migration 0006).
+    // RPC em vez de update direto: só manager resolve (ver migration 0008).
     await supabase.rpc("toggle_comment_resolved", { comment_id: commentId, new_resolved: resolved });
   }
 
@@ -113,6 +114,7 @@ export function CommentSheet({
           <CommentThread
             comments={comments}
             teamProfiles={teamProfiles}
+            isManager={isManager}
             onReply={handleReply}
             onToggleResolved={handleToggleResolved}
           />

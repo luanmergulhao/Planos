@@ -1,6 +1,7 @@
 import { requireProfile } from "@/lib/auth/current-user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TaskTimer } from "@/components/time/TaskTimer";
 import { parseIntervalToHours, formatHours } from "@/lib/time/format";
 
 function formatDay(iso: string) {
@@ -47,6 +48,11 @@ export default async function HorasPage() {
       <div>
         <h1 className="text-2xl font-semibold">Horas</h1>
         <p className="text-muted-foreground">Calculadas a partir do login/logout automático.</p>
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Cronômetro por tarefa</h2>
+        <TaskTimer userId={user.id} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

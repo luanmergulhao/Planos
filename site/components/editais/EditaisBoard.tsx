@@ -131,6 +131,7 @@ export function EditaisBoard({
           editalId={activeCommentEditalId}
           teamProfiles={teamProfiles}
           currentUserId={currentUserId}
+          isManager={isManager}
           onClose={() => setActiveCommentEditalId(null)}
         />
       )}

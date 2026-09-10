@@ -68,11 +68,13 @@ function CommentBubble({
 export function CommentThread({
   comments,
   teamProfiles,
+  isManager,
   onReply,
   onToggleResolved,
 }: {
   comments: CommentEntry[];
   teamProfiles: TeamProfile[];
+  isManager: boolean;
   onReply: (parentCommentId: string, body: string, mentionedUserIds: string[]) => Promise<void> | void;
   onToggleResolved: (commentId: string, resolved: boolean) => void;
 }) {
@@ -99,14 +101,22 @@ export function CommentThread({
           <li key={comment.id} className={comment.resolved ? "opacity-60" : undefined}>
             <div className="flex items-start justify-between gap-2">
               <CommentBubble comment={comment} teamProfiles={teamProfiles} isReply={false} />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                title={comment.resolved ? "Reabrir" : "Marcar como resolvido"}
-                onClick={() => onToggleResolved(comment.id, !comment.resolved)}
-              >
-                {comment.resolved ? <Undo2 className="size-4" /> : <Check className="size-4" />}
-              </Button>
+              {isManager ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  title={comment.resolved ? "Reabrir" : "Marcar como resolvido"}
+                  onClick={() => onToggleResolved(comment.id, !comment.resolved)}
+                >
+                  {comment.resolved ? <Undo2 className="size-4" /> : <Check className="size-4" />}
+                </Button>
+              ) : (
+                comment.resolved && (
+                  <Badge variant="secondary" className="shrink-0">
+                    Resolvido
+                  </Badge>
+                )
+              )}
             </div>
 
             {replies.length > 0 && (

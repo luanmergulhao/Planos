@@ -389,6 +389,30 @@ export type Database = {
           },
         ];
       };
+      task_time_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          description: string;
+          started_at: string;
+          stopped_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["task_time_entries"]["Row"]> & {
+          user_id: string;
+          description: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["task_time_entries"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "task_time_entries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       daily_hours: {

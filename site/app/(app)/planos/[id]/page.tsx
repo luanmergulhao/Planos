@@ -4,7 +4,7 @@ import { PlanoEditor } from "@/components/plano/PlanoEditor";
 
 export default async function PlanoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { supabase, user } = await requireProfile();
+  const { supabase, user, profile } = await requireProfile();
 
   const { data: plano } = await supabase.from("planos").select("*").eq("id", id).maybeSingle();
   if (!plano) notFound();
@@ -70,6 +70,7 @@ export default async function PlanoPage({ params }: { params: Promise<{ id: stri
       currentUserId={user.id}
       isOwner={isOwner}
       canEdit={canEdit}
+      isManager={profile.role === "manager"}
       ownerLabel={ownerProfile?.full_name ?? ownerProfile?.email ?? "?"}
       updatedByLabel={updatedByProfile?.full_name ?? updatedByProfile?.email ?? null}
     />
