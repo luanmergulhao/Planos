@@ -1,9 +1,18 @@
 import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth/current-user";
 import { PlanoEditor } from "@/components/plano/PlanoEditor";
+import { todaySaoPaulo } from "@/lib/planos/day";
 
-export default async function PlanoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PlanoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ dia?: string }>;
+}) {
   const { id } = await params;
+  const { dia } = await searchParams;
+  const day = dia ?? todaySaoPaulo();
   const { supabase, user, profile } = await requireProfile();
 
   const { data: plano } = await supabase.from("planos").select("*").eq("id", id).maybeSingle();
@@ -33,7 +42,30 @@ export default async function PlanoPage({ params }: { params: Promise<{ id: stri
     .from("plano_items")
     .select("*")
     .eq("plano_id", id)
+    .eq("day", day)
     .order("item_number");
+
+  const { data: planoDay } = await supabase
+    .from("plano_days")
+    .select("*")
+    .eq("plano_id", id)
+    .eq("day", day)
+    .maybeSingle();
+
+  // dia mais recente ANTES do selecionado que já teve conteúdo — pra
+  // oferecer "começar o dia copiando de lá" quando o dia atual tá vazio
+  let previousDayWithItems: string | null = null;
+  if (!items || items.length === 0) {
+    const { data: previous } = await supabase
+      .from("plano_items")
+      .select("day")
+      .eq("plano_id", id)
+      .lt("day", day)
+      .order("day", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    previousDayWithItems = previous?.day ?? null;
+  }
 
   const { data: shares } = isOwner
     ? await supabase
@@ -59,6 +91,9 @@ export default async function PlanoPage({ params }: { params: Promise<{ id: stri
       plano={plano}
       categories={categories ?? []}
       items={items ?? []}
+      day={day}
+      planoDay={planoDay ?? null}
+      previousDayWithItems={previousDayWithItems}
       shares={
         (shares ?? []).map((s) => ({
           id: s.id,

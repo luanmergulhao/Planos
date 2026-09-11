@@ -30,11 +30,14 @@ async function scanPlanoDeadlines(admin: ReturnType<typeof createAdminClient>) {
   for (const daysBefore of DEADLINE_REMINDER_OFFSETS_DAYS) {
     const targetDate = addDaysISO(daysBefore);
 
+    // só a cópia de HOJE de cada tarefa (evita duplicar aviso por causa
+    // das cópias de dias passados que carregam o mesmo prazo)
     const { data: items } = await admin
       .from("plano_items")
       .select("id, content, plano_id, planos(owner_id, title)")
       .eq("deadline_at", targetDate)
-      .neq("status", "concluido");
+      .eq("day", todayISO())
+      .eq("riscado", false);
 
     for (const item of items ?? []) {
       const { data: alreadySent } = await admin

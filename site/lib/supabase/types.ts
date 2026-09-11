@@ -4,11 +4,13 @@
 // Supabase real existir, pode substituir esse arquivo pelo gerado
 // automaticamente: `npx supabase gen types typescript`.
 
+// Espelha as 3 colunas do Planos real (Google Docs): Título | Tarefa
+// pedida | Links/informações. O prazo mora em `plano_items.deadline_at`
+// (coluna própria), mostrado junto do título na UI.
 export type PlanoItemContent = {
-  texto?: string;
-  data_prazo?: string | null;
-  link?: string | null;
-  responsavel?: string | null;
+  titulo?: string;
+  tarefa?: string;
+  links?: string;
 };
 
 export type ItemStatus = "pendente" | "em_andamento" | "concluido" | "urgente";
@@ -101,6 +103,8 @@ export type Database = {
           content: PlanoItemContent;
           deadline_at: string | null;
           status: ItemStatus;
+          day: string;
+          riscado: boolean;
           sort_order: number;
           created_by: string | null;
           updated_by: string | null;
@@ -125,6 +129,28 @@ export type Database = {
             columns: ["category_id"];
             isOneToOne: false;
             referencedRelation: "plano_categories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      plano_days: {
+        Row: {
+          id: string;
+          plano_id: string;
+          day: string;
+          alinhamento_inicial_at: string | null;
+          alinhamento_final_at: string | null;
+          started_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["plano_days"]["Row"]> & { plano_id: string; day: string };
+        Update: Partial<Database["public"]["Tables"]["plano_days"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "plano_days_plano_id_fkey";
+            columns: ["plano_id"];
+            isOneToOne: false;
+            referencedRelation: "planos";
             referencedColumns: ["id"];
           },
         ];
@@ -461,6 +487,10 @@ export type Database = {
       };
       toggle_edital_comment_resolved: {
         Args: { comment_id: string; new_resolved: boolean };
+        Returns: void;
+      };
+      set_item_riscado: {
+        Args: { item_id: string; new_riscado: boolean };
         Returns: void;
       };
     };

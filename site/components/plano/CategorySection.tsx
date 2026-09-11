@@ -10,17 +10,21 @@ export function CategorySection({
   category,
   items,
   canEdit,
+  isManager,
   onAddItem,
   onUpdateItem,
   onDeleteItem,
+  onToggleRiscado,
   onOpenComments,
 }: {
   category: CategoryRow;
   items: ItemRow[];
   canEdit: boolean;
+  isManager: boolean;
   onAddItem: () => void;
   onUpdateItem: (itemId: string, patch: Partial<ItemRow>) => void;
   onDeleteItem: (itemId: string) => void;
+  onToggleRiscado: (itemId: string, riscado: boolean) => void;
   onOpenComments: (itemId: string) => void;
 }) {
   return (
@@ -46,8 +50,10 @@ export function CategorySection({
               item={item}
               categoryCode={category.code}
               canEdit={canEdit}
+              isManager={isManager}
               onUpdate={(patch) => onUpdateItem(item.id, patch)}
               onDelete={() => onDeleteItem(item.id)}
+              onToggleRiscado={(riscado) => onToggleRiscado(item.id, riscado)}
               onOpenComments={() => onOpenComments(item.id)}
             />
           ))

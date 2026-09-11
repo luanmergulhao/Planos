@@ -17,10 +17,19 @@ export type Digest = {
   priority: DigestItem[];
 };
 
+// Categoria D (Incêndio) É a prioridade — não existe um status
+// separado de "urgente", é a própria categoria que já indica isso.
+const PRIORITY_CATEGORY_CODE = "D";
+
+function todayStr() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
 // Resumo pessoal (tarefas dentro dos Planos) — usado tanto pelo painel
 // (Server Component, na hora) quanto pelo cron diário (push de
 // notificação/email) — mesma lógica, duas chamadas. As editais
-// compartilhadas têm resumo próprio, ver lib/editais.ts.
+// compartilhadas têm resumo próprio, ver lib/editais.ts. Só olha o dia
+// de hoje de cada Plano (dias passados não entram no resumo do dia).
 export async function computeDigest(
   supabase: SupabaseClient<Database>,
   userId: string
@@ -38,16 +47,16 @@ export async function computeDigest(
   }
 
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const day = todayStr();
 
   const { data: items } = await supabase
     .from("plano_items")
     .select(
-      "id, item_number, content, deadline_at, status, plano_id, planos(title), plano_categories(code)"
+      "id, item_number, content, deadline_at, riscado, plano_id, planos(title), plano_categories(code)"
     )
     .in("plano_id", planoIds)
-    .neq("status", "concluido")
-    .or(`deadline_at.lte.${todayStr},status.eq.urgente`)
+    .eq("day", day)
+    .eq("riscado", false)
     .order("deadline_at", { ascending: true });
 
   const overdue: DigestItem[] = [];
@@ -65,7 +74,7 @@ export async function computeDigest(
       sourceLabel: plano?.title ?? "Plano",
     };
 
-    if (raw.status === "urgente") {
+    if (category?.code === PRIORITY_CATEGORY_CODE) {
       priority.push(entry);
     } else if (getDeadlineUrgency(raw.deadline_at, today) === "overdue") {
       overdue.push(entry);
