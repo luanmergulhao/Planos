@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth/current-user";
 import { PlanoEditor } from "@/components/plano/PlanoEditor";
 import { todaySaoPaulo } from "@/lib/planos/day";
+import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
 
 export default async function PlanoPage({
   params,
@@ -76,6 +77,8 @@ export default async function PlanoPage({
 
   const { data: teamProfiles } = await supabase.from("profiles").select("id, full_name, email");
 
+  const deadlines = await getDeadlinesLinhaA();
+
   const { data: ownerProfile } = await supabase
     .from("profiles")
     .select("full_name, email")
@@ -94,6 +97,7 @@ export default async function PlanoPage({
       day={day}
       planoDay={planoDay ?? null}
       previousDayWithItems={previousDayWithItems}
+      deadlines={deadlines}
       shares={
         (shares ?? []).map((s) => ({
           id: s.id,

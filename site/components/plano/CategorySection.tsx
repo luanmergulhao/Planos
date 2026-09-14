@@ -4,13 +4,16 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanoItemRow } from "@/components/plano/PlanoItemRow";
+import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
 import type { CategoryRow, ItemRow } from "@/components/plano/types";
+import type { DeadlinesLinhaA } from "@/lib/planos/deadlines";
 
 export function CategorySection({
   category,
   items,
   canEdit,
   isManager,
+  deadlines,
   onAddItem,
   onUpdateItem,
   onDeleteItem,
@@ -21,6 +24,7 @@ export function CategorySection({
   items: ItemRow[];
   canEdit: boolean;
   isManager: boolean;
+  deadlines: DeadlinesLinhaA | null;
   onAddItem: () => void;
   onUpdateItem: (itemId: string, patch: Partial<ItemRow>) => void;
   onDeleteItem: (itemId: string) => void;
@@ -40,7 +44,8 @@ export function CategorySection({
           </Button>
         )}
       </CardHeader>
-      <CardContent className="flex flex-col gap-2">
+      <CardContent className="flex flex-col gap-3">
+        {deadlines && <DeadlinesPanel deadlines={deadlines} />}
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma tarefa ainda nessa categoria.</p>
         ) : (

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDayLabel, shiftDay } from "@/lib/planos/day";
 import type { CategoryRow, ItemRow, PlanoDayRow, PlanoRow, ShareEntry, TeamProfile } from "@/components/plano/types";
+import type { DeadlinesLinhaA } from "@/lib/planos/deadlines";
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -30,6 +31,7 @@ export function PlanoEditor({
   day,
   planoDay: initialPlanoDay,
   previousDayWithItems,
+  deadlines,
   shares,
   teamProfiles,
   currentUserId,
@@ -45,6 +47,7 @@ export function PlanoEditor({
   day: string;
   planoDay: PlanoDayRow | null;
   previousDayWithItems: string | null;
+  deadlines: DeadlinesLinhaA;
   shares: ShareEntry[];
   teamProfiles: TeamProfile[];
   currentUserId: string;
@@ -229,6 +232,7 @@ export function PlanoEditor({
             items={itemsByCategory.get(category.id) ?? []}
             canEdit={canEdit}
             isManager={isManager}
+            deadlines={category.code === "A" ? deadlines : null}
             onAddItem={() => handleAddItem(category.id)}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
