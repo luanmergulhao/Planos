@@ -4,10 +4,13 @@ import { computeDigest } from "@/lib/digest";
 import { computeEditaisDigest, ACTIVE_FASES } from "@/lib/editais";
 import { searchResultados, type ResultadoFinding } from "@/lib/ai/resultados";
 import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
+import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
+import { todaySaoPaulo } from "@/lib/planos/day";
 
 export const maxDuration = 60;
 
 const DEADLINE_REMINDER_OFFSETS_DAYS = [7, 3, 1, 0];
+const LINK_DEADLINES_SEMANA = "/planos?bloco=deadlines";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -220,6 +223,49 @@ async function searchAndNotifyResultados(admin: ReturnType<typeof createAdminCli
   return notified;
 }
 
+// Toda segunda-feira: varre a agenda do Google e avisa o time quais
+// deadlines (D/DP) vencem nessa semana e na próxima. É a mesma lista que
+// o painel da linha A mostra ao vivo — a diferença é que aqui ela vai
+// atrás da pessoa, em vez de esperar alguém abrir o Plano.
+async function notifyDeadlinesDaSemana(admin: ReturnType<typeof createAdminClient>) {
+  const hoje = todaySaoPaulo();
+  const ehSegunda = new Date(hoje + "T12:00:00Z").getUTCDay() === 1;
+  if (!ehSegunda) return 0;
+
+  const { semana, proximaSemana } = await getDeadlinesLinhaA(hoje);
+  if (semana.length === 0 && proximaSemana.length === 0) return 0;
+
+  const { data: teamProfiles } = await admin.from("profiles").select("id");
+  if (!teamProfiles || teamProfiles.length === 0) return 0;
+
+  // se a rotina rodar duas vezes na mesma segunda, não avisa de novo
+  const { data: jaAvisado } = await admin
+    .from("notifications")
+    .select("id")
+    .eq("link_path", LINK_DEADLINES_SEMANA)
+    .gte("created_at", `${hoje}T00:00:00Z`)
+    .limit(1)
+    .maybeSingle();
+  if (jaAvisado) return 0;
+
+  const linhas = (rotulo: string, entradas: { titulo: string; dia: string }[]) =>
+    entradas.length === 0
+      ? `${rotulo}: nenhum.`
+      : `${rotulo}: ${entradas.map((e) => `${e.dia.slice(8, 10)}/${e.dia.slice(5, 7)} ${e.titulo}`).join(" · ")}`;
+
+  await admin.from("notifications").insert(
+    teamProfiles.map((profile) => ({
+      user_id: profile.id,
+      type: "deadline_reminder" as const,
+      title: `Deadlines da semana (${semana.length} agora, ${proximaSemana.length} na próxima)`,
+      body: `${linhas("Esta semana", semana)}\n${linhas("Próxima semana", proximaSemana)}`,
+      link_path: LINK_DEADLINES_SEMANA,
+    }))
+  );
+
+  return teamProfiles.length;
+}
+
 async function sweepStaleSessions(admin: ReturnType<typeof createAdminClient>) {
   const cutoff = new Date(Date.now() - HEARTBEAT_TIMEOUT_MINUTES * 60 * 1000).toISOString();
 
@@ -248,14 +294,21 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
 
-  const [planoDeadlinesNotified, editalDeadlinesNotified, digestsSent, sessionsClosed, resultadosEncontrados] =
-    await Promise.all([
-      scanPlanoDeadlines(admin),
-      scanEditalDeadlines(admin),
-      sendDailyDigests(admin),
-      sweepStaleSessions(admin),
-      searchAndNotifyResultados(admin),
-    ]);
+  const [
+    planoDeadlinesNotified,
+    editalDeadlinesNotified,
+    digestsSent,
+    sessionsClosed,
+    resultadosEncontrados,
+    deadlinesDaSemanaNotified,
+  ] = await Promise.all([
+    scanPlanoDeadlines(admin),
+    scanEditalDeadlines(admin),
+    sendDailyDigests(admin),
+    sweepStaleSessions(admin),
+    searchAndNotifyResultados(admin),
+    notifyDeadlinesDaSemana(admin),
+  ]);
 
   return NextResponse.json({
     ok: true,
@@ -264,5 +317,6 @@ export async function GET(request: Request) {
     digestsSent,
     sessionsClosed,
     resultadosEncontrados,
+    deadlinesDaSemanaNotified,
   });
 }
