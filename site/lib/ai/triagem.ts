@@ -1,3 +1,5 @@
+import { callGemini } from "@/lib/ai/gemini";
+
 // Extração assistida por IA da triagem de edital, a partir de um link.
 // Mesma lógica que a equipe já fazia manualmente colando o link no
 // Gemini com um prompt de perguntas fixas — só que agora dentro do
@@ -67,40 +69,15 @@ const RESPONSE_SCHEMA = {
   required: [...TRIAGEM_FIELDS.map((f) => f.key), "deadline_iso_date"],
 };
 
-const MODEL = "gemini-2.5-flash";
-
 export async function extractTriagemFromLink(link: string): Promise<TriagemResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY não configurada");
-  }
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `${TRIAGEM_PROMPT}\n\nLink do edital: ${link}` }] }],
-        tools: [{ url_context: {} }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: RESPONSE_SCHEMA,
-        },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const errorBody = await res.text().catch(() => "");
-    throw new Error(`Gemini respondeu ${res.status}: ${errorBody.slice(0, 300)}`);
-  }
-
-  const data = await res.json();
-  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error("Gemini não devolveu texto (pode ter bloqueado o conteúdo do link)");
-  }
+  const text = await callGemini({
+    contents: [{ parts: [{ text: `${TRIAGEM_PROMPT}\n\nLink do edital: ${link}` }] }],
+    tools: [{ url_context: {} }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA,
+    },
+  });
 
   let parsed: unknown;
   try {

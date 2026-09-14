@@ -1,3 +1,5 @@
+import { callGemini } from "@/lib/ai/gemini";
+
 // Busca de resultados assistida por IA (prompt "R" do manual) — pra
 // editais já enviados, pesquisa na internet inteira (não só o link do
 // edital) por resultados parciais, finais, homologações etc.
@@ -35,8 +37,6 @@ export const TIPO_RESULTADO_LABEL: Record<TipoResultado, string> = {
   outros: "Outros",
   nao_localizado: "Não localizado",
 };
-
-const MODEL = "gemini-2.5-flash";
 
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
@@ -98,37 +98,16 @@ function extractJsonText(text: string): string {
 export async function searchResultados(editais: EditalForSearch[]): Promise<ResultadoFinding[]> {
   if (editais.length === 0) return [];
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY não configurada");
-  }
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildPrompt(editais) }] }],
-        tools: [{ google_search: {} }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: RESPONSE_SCHEMA,
-        },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const errorBody = await res.text().catch(() => "");
-    throw new Error(`Gemini respondeu ${res.status}: ${errorBody.slice(0, 300)}`);
-  }
-
-  const data = await res.json();
-  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error("Gemini não devolveu texto (pode ter bloqueado a busca)");
-  }
+  // google_search exige faturamento ativo no projeto Google: sem isso a
+  // API devolve 429/403 mesmo com a chave válida.
+  const text = await callGemini({
+    contents: [{ parts: [{ text: buildPrompt(editais) }] }],
+    tools: [{ google_search: {} }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA,
+    },
+  });
 
   let parsed: unknown;
   try {
