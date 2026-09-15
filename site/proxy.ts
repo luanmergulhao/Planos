@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+// /api/cron é chamado pela Vercel sem sessão de usuário — cada rota de
+// cron confere o CRON_SECRET por conta própria. Sem essa exceção o proxy
+// redirecionava pro login e as rotinas automáticas nunca executavam.
+const PUBLIC_PATHS = ["/login", "/auth", "/api/cron"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

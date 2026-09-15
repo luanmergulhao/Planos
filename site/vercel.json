@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/daily",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/revisao-deadlines",
+      "schedule": "0 11 * * *"
     }
   ]
 }

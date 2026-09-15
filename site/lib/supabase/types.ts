@@ -17,6 +17,7 @@ export type ItemStatus = "pendente" | "em_andamento" | "concluido" | "urgente";
 export type SharePermission = "view" | "edit";
 export type ProfileRole = "member" | "manager";
 export type EditalFase = "T" | "D" | "DP" | "CONCLUIDO" | "DESCARTADO";
+export type RevisaoStatus = "mantido" | "prorrogado" | "encerrado" | "nao_confirmado";
 export type NotificationType =
   | "mention"
   | "comment_reply"
@@ -151,6 +152,53 @@ export type Database = {
             columns: ["plano_id"];
             isOneToOne: false;
             referencedRelation: "planos";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      deadline_revisoes: {
+        Row: {
+          id: string;
+          chave_evento: string;
+          titulo_evento: string;
+          deadline_agenda: string;
+          link_consultado: string | null;
+          status: RevisaoStatus;
+          novo_deadline: string | null;
+          novo_deadline_texto: string | null;
+          evidencia: string | null;
+          fonte_link: string | null;
+          revisado_em: string;
+          revisado_dia: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["deadline_revisoes"]["Row"]> & {
+          chave_evento: string;
+          titulo_evento: string;
+          deadline_agenda: string;
+          status: RevisaoStatus;
+          revisado_dia: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["deadline_revisoes"]["Row"]>;
+        Relationships: [];
+      };
+      deadline_links: {
+        Row: {
+          chave_evento: string;
+          link: string;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["deadline_links"]["Row"]> & {
+          chave_evento: string;
+          link: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["deadline_links"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "deadline_links_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];

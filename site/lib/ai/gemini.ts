@@ -1,11 +1,18 @@
-// Chamada base pro Gemini, compartilhada pela Triagem e pela Busca de
-// Resultados. Dois detalhes que só aparecem na prática:
+// Chamada base pro Gemini, compartilhada pela Triagem, Busca de
+// Resultados e Revisão de Deadlines. Detalhes que só aparecem na prática:
 // - a chave vai no cabeçalho x-goog-api-key; no parâmetro ?key= da URL
 //   as chaves no formato novo respondem 403;
-// - os modelos flash devolvem 503 ("high demand") com frequência, então
-//   vale repetir e cair pro próximo da lista antes de desistir.
+// - os modelos flash devolvem 503 ("high demand") com frequência, e cada
+//   503 pode demorar ~20s pra voltar;
+// - nem todo modelo aceita toda ferramenta nessa chave (403/404/429).
 
 const MODELS = ["gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-3.6-flash"];
+
+// As rotas que chamam a IA têm maxDuration de 60s na Vercel. Passado
+// esse tempo a execução é cortada sem aviso, então a chamada desiste
+// antes, com folga pra quem chamou ainda gravar o resultado.
+const BUDGET_MS = 45_000;
+const ROUNDS = 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -15,18 +22,38 @@ export async function callGemini(body: Record<string, unknown>): Promise<string>
     throw new Error("GEMINI_API_KEY não configurada");
   }
 
+  const startedAt = Date.now();
+  const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
+
+  // 403/404/429 não melhoram tentando de novo o mesmo modelo nessa
+  // chamada; só 503 (sobrecarga) e falha de rede merecem outra rodada.
+  const unusable = new Set<string>();
   let lastError = "erro desconhecido";
 
-  for (const model of MODELS) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify(body),
-        }
-      );
+  // Sobrecarga costuma ser por modelo, então passa pro próximo da lista
+  // em vez de insistir três vezes no mesmo.
+  for (let round = 1; round <= ROUNDS; round++) {
+    for (const model of MODELS) {
+      if (unusable.has(model)) continue;
+      if (timeLeft() <= 0) {
+        throw new Error(`Gemini não respondeu a tempo. Último erro — ${lastError}`);
+      }
+
+      let res: Response;
+      try {
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(Math.max(1, Math.floor(timeLeft()))),
+          }
+        );
+      } catch (err) {
+        lastError = `${model}: ${err instanceof Error ? err.message : "falha de rede"}`;
+        continue;
+      }
 
       if (res.ok) {
         const data = await res.json();
@@ -36,17 +63,16 @@ export async function callGemini(body: Record<string, unknown>): Promise<string>
           .join("");
         if (text) return text;
         lastError = `${model} respondeu sem texto (pode ter bloqueado o conteúdo)`;
-        break;
+        unusable.add(model);
+        continue;
       }
 
       lastError = `${model} respondeu ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`;
-
-      if (res.status === 503) {
-        await sleep(2000 * attempt);
-        continue;
-      }
-      break;
+      if (res.status !== 503) unusable.add(model);
     }
+
+    if (unusable.size === MODELS.length) break;
+    if (round < ROUNDS) await sleep(Math.min(2000 * round, Math.max(0, timeLeft())));
   }
 
   throw new Error(`Gemini falhou. Último erro — ${lastError}`);

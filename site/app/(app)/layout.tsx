@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/", label: "Painel" },
   { href: "/planos", label: "Planos" },
   { href: "/editais", label: "Editais" },
+  { href: "/revisao-deadlines", label: "Revisão de Deadlines" },
   { href: "/horas", label: "Horas" },
   { href: "/notificacoes", label: "Notificações" },
 ];
