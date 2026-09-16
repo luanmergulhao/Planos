@@ -68,6 +68,23 @@ function entradasDe(eventos: CalendarEvent[], de: string, ate: string): Deadline
     .sort((a, b) => a.dia.localeCompare(b.dia) || a.titulo.localeCompare(b.titulo));
 }
 
+// Deadline de mentira, só pra demonstrar a tela (gravação de vídeo).
+// Formato: "AAAA-MM-DD|Título do evento", vários separados por ";".
+// Sem a variável de ambiente, nada é injetado — então isso não vaza pro
+// ar sem alguém configurar de propósito.
+function deadlinesDeTeste(): CalendarEvent[] {
+  return (process.env.DEADLINES_TESTE ?? "")
+    .split(";")
+    .map((linha) => linha.trim())
+    .filter(Boolean)
+    .flatMap((linha) => {
+      const [dia, ...resto] = linha.split("|");
+      const titulo = resto.join("|").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia.trim()) || !titulo) return [];
+      return [{ titulo, ultimoDia: dia.trim(), dataNoTitulo: null }];
+    });
+}
+
 /** Segunda-feira da semana em que `dia` cai. */
 function segundaDaSemana(dia: string): string {
   const d = new Date(dia + "T00:00:00Z");
@@ -84,7 +101,7 @@ export async function getDeadlinesLinhaA(hoje = todaySaoPaulo()): Promise<Deadli
   const fimSemana = shiftDay(segunda, 7);
   const fimProximaSemana = shiftDay(segunda, 14);
 
-  const eventos = await fetchCalendarEvents();
+  const eventos = [...(await fetchCalendarEvents()), ...deadlinesDeTeste()];
   const semana = entradasDe(eventos, inicioSemana, fimSemana);
 
   // O dia de virada pertence às duas janelas pela regra escrita; fica só
