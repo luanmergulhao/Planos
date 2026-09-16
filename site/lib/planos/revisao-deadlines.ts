@@ -1,34 +1,38 @@
-// Revisão diária de prorrogação: pega os deadlines D/DP da linha A
-// (desta semana e da próxima), pergunta à IA se cada um foi prorrogado,
-// e grava o resultado com a data da revisão. Roda sozinha pelo cron —
-// não tem tela nem botão, o resultado aparece na própria linha A.
+// Conferência de prorrogação dos deadlines D/DP da linha A: pergunta à
+// IA se o prazo foi prorrogado, mantido ou encerrado, lendo a página
+// oficial do edital. Roda de dois jeitos — sozinha uma vez por dia pelo
+// cron, e na hora pelo botão ao lado de cada deadline.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkProrrogacao, type ProrrogacaoResult } from "@/lib/ai/prorrogacao";
 import { getDeadlinesLinhaA, type DeadlineEntry, type RevisaoResumo } from "@/lib/planos/deadlines";
+import { chaveEvento } from "@/lib/planos/chave-evento";
 import { todaySaoPaulo } from "@/lib/planos/day";
 import type { Database } from "@/lib/supabase/types";
 
 type Client = SupabaseClient<Database>;
-
-/** Título sem prefixo D/DP, datas e horários — continua igual quando a
- *  equipe renomeia o evento de D pra DP ou atualiza a data no título. */
-export function chaveEvento(titulo: string): string {
-  return titulo
-    .toLowerCase()
-    .replace(/^(dp|d)\s+/, "")
-    .replace(/\d{1,2}\/\d{1,2}(\/\d{2,4})?/g, " ")
-    .replace(/\b\d{1,2}(:\d{2}|h\d{0,2})\b/g, " ")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
 
 export async function deadlinesParaRevisar(hoje = todaySaoPaulo()): Promise<DeadlineEntry[]> {
   const { semana, proximaSemana } = await getDeadlinesLinhaA(hoje);
   return [...semana, ...proximaSemana];
 }
 
-/** Última revisão de cada deadline, pra mostrar dentro da linha A. */
+/** Links já salvos, indexados pela chave do evento. */
+export async function getLinksSalvos(
+  client: Client,
+  deadlines: DeadlineEntry[]
+): Promise<Record<string, string>> {
+  if (deadlines.length === 0) return {};
+
+  const { data } = await client
+    .from("deadline_links")
+    .select("chave_evento, link")
+    .in("chave_evento", deadlines.map((d) => chaveEvento(d.titulo)));
+
+  return Object.fromEntries((data ?? []).map((l) => [l.chave_evento, l.link]));
+}
+
+/** Última revisão de cada deadline, indexada por `${titulo}|${dia}`. */
 export async function getRevisoesRecentes(
   client: Client,
   deadlines: DeadlineEntry[]
@@ -41,12 +45,11 @@ export async function getRevisoesRecentes(
     .in("chave_evento", deadlines.map((d) => chaveEvento(d.titulo)))
     .order("revisado_em", { ascending: false });
 
-  const porChave: Record<string, RevisaoResumo> = {};
+  const porDeadline: Record<string, RevisaoResumo> = {};
   for (const r of data ?? []) {
     // vem da mais recente pra mais antiga: a primeira de cada deadline
     // é a última revisão feita
-    const k = `${r.titulo_evento}|${r.deadline_agenda}`;
-    porChave[k] ??= {
+    porDeadline[`${r.titulo_evento}|${r.deadline_agenda}`] ??= {
       status: r.status,
       novo_deadline: r.novo_deadline,
       novo_deadline_texto: r.novo_deadline_texto,
@@ -55,41 +58,69 @@ export async function getRevisoesRecentes(
       revisado_em: r.revisado_em,
     };
   }
-  return porChave;
+  return porDeadline;
 }
 
-// O link vem do cache ou do quadro de Editais, onde a Triagem já
-// cadastra o link de cada edital. Nada é digitado à mão pra isso.
-async function resolverLinks(client: Client, chaves: string[]): Promise<Map<string, string>> {
-  const [{ data: cache }, { data: editais }] = await Promise.all([
-    client.from("deadline_links").select("chave_evento, link").in("chave_evento", chaves),
-    client.from("editais").select("titulo, link").not("link", "is", null),
-  ]);
-
-  const porChave = new Map((cache ?? []).map((l) => [l.chave_evento, l.link]));
-  const descobertos: { chave_evento: string; link: string }[] = [];
-
-  for (const edital of editais ?? []) {
-    const chaveEdital = chaveEvento(edital.titulo);
-    // chave curta demais casaria com qualquer coisa
-    if (chaveEdital.length < 8 || !edital.link) continue;
-
-    for (const chave of chaves) {
-      if (porChave.has(chave)) continue;
-      if (chave === chaveEdital || chave.includes(chaveEdital) || chaveEdital.includes(chave)) {
-        porChave.set(chave, edital.link);
-        descobertos.push({ chave_evento: chave, link: edital.link });
-      }
-    }
+async function gravarRevisao(
+  admin: Client,
+  { titulo, dia, link, resultado, hoje }: {
+    titulo: string;
+    dia: string;
+    link: string | null;
+    resultado: ProrrogacaoResult;
+    hoje: string;
   }
+): Promise<RevisaoResumo> {
+  const revisadoEm = new Date().toISOString();
 
-  if (descobertos.length > 0) {
-    await client.from("deadline_links").upsert(descobertos, { onConflict: "chave_evento" });
-  }
+  await admin.from("deadline_revisoes").upsert(
+    {
+      chave_evento: chaveEvento(titulo),
+      titulo_evento: titulo,
+      deadline_agenda: dia,
+      link_consultado: link,
+      status: resultado.status,
+      novo_deadline: resultado.novo_deadline_iso,
+      novo_deadline_texto: resultado.novo_deadline_texto,
+      evidencia: resultado.evidencia,
+      fonte_link: resultado.fonte_link,
+      revisado_em: revisadoEm,
+      revisado_dia: hoje,
+    },
+    { onConflict: "chave_evento,deadline_agenda,revisado_dia" }
+  );
 
-  return porChave;
+  return {
+    status: resultado.status,
+    novo_deadline: resultado.novo_deadline_iso,
+    novo_deadline_texto: resultado.novo_deadline_texto,
+    evidencia: resultado.evidencia,
+    fonte_link: resultado.fonte_link,
+    revisado_em: revisadoEm,
+  };
 }
 
+/** Conferência de um deadline só — é o que o botão da linha A chama. */
+export async function revisarUmDeadline(
+  admin: Client,
+  { titulo, dia }: { titulo: string; dia: string }
+): Promise<RevisaoResumo> {
+  const { data: linkRow } = await admin
+    .from("deadline_links")
+    .select("link")
+    .eq("chave_evento", chaveEvento(titulo))
+    .maybeSingle();
+
+  const link = linkRow?.link ?? null;
+  if (!link) {
+    throw new Error("Cole o link do edital antes de conferir.");
+  }
+
+  const resultado = await checkProrrogacao({ titulo, deadline: dia, link });
+  return gravarRevisao(admin, { titulo, dia, link, resultado, hoje: todaySaoPaulo() });
+}
+
+/** Varredura diária de todos os deadlines da linha A que já têm link. */
 export async function runRevisaoDeadlines(
   admin: Client,
   { hoje = todaySaoPaulo(), refazerHoje = false }: { hoje?: string; refazerHoje?: boolean } = {}
@@ -97,9 +128,8 @@ export async function runRevisaoDeadlines(
   const deadlines = await deadlinesParaRevisar(hoje);
   if (deadlines.length === 0) return { revisados: 0, prorrogados: 0, semLink: 0 };
 
-  const chaves = deadlines.map((d) => chaveEvento(d.titulo));
-  const [linkPorChave, { data: jaRevisados }] = await Promise.all([
-    resolverLinks(admin, chaves),
+  const [links, { data: jaRevisados }] = await Promise.all([
+    getLinksSalvos(admin, deadlines),
     admin.from("deadline_revisoes").select("chave_evento, deadline_agenda").eq("revisado_dia", hoje),
   ]);
 
@@ -108,54 +138,38 @@ export async function runRevisaoDeadlines(
     (d) => refazerHoje || !feitosHoje.has(`${chaveEvento(d.titulo)}|${d.dia}`)
   );
 
+  const semLink = pendentes.filter((d) => !links[chaveEvento(d.titulo)]).length;
+
   const resultados = await Promise.all(
-    pendentes.map(async (d) => {
-      const chave = chaveEvento(d.titulo);
-      const link = linkPorChave.get(chave) ?? null;
+    pendentes
+      .filter((d) => links[chaveEvento(d.titulo)])
+      .map(async (d) => {
+        const link = links[chaveEvento(d.titulo)];
 
-      let resultado: ProrrogacaoResult;
-      try {
-        resultado = await checkProrrogacao({ titulo: d.titulo, deadline: d.dia, link });
-      } catch (err) {
-        const detalhe = err instanceof Error ? err.message.slice(0, 160) : "erro desconhecido";
-        resultado = {
-          status: "nao_confirmado",
-          novo_deadline_iso: null,
-          novo_deadline_texto: null,
-          evidencia: link
-            ? `Não deu pra consultar a página do edital (${detalhe}).`
-            : `Esse edital não está no quadro de Editais com link, então não há página oficial pra conferir (${detalhe}).`,
-          fonte_link: null,
-        };
-      }
+        let resultado: ProrrogacaoResult;
+        try {
+          resultado = await checkProrrogacao({ titulo: d.titulo, deadline: d.dia, link });
+        } catch (err) {
+          const detalhe = err instanceof Error ? err.message.slice(0, 160) : "erro desconhecido";
+          resultado = {
+            status: "nao_confirmado",
+            novo_deadline_iso: null,
+            novo_deadline_texto: null,
+            evidencia: `Não deu pra consultar a página do edital (${detalhe}).`,
+            fonte_link: null,
+          };
+        }
 
-      // Grava assim que essa conferência termina, sem esperar as outras:
-      // se a execução for cortada pelo tempo limite, o que já foi
-      // conferido não se perde.
-      await admin.from("deadline_revisoes").upsert(
-        {
-          chave_evento: chave,
-          titulo_evento: d.titulo,
-          deadline_agenda: d.dia,
-          link_consultado: link,
-          status: resultado.status,
-          novo_deadline: resultado.novo_deadline_iso,
-          novo_deadline_texto: resultado.novo_deadline_texto,
-          evidencia: resultado.evidencia,
-          fonte_link: resultado.fonte_link,
-          revisado_em: new Date().toISOString(),
-          revisado_dia: hoje,
-        },
-        { onConflict: "chave_evento,deadline_agenda,revisado_dia" }
-      );
-
-      return { status: resultado.status, temLink: link !== null };
-    })
+        // grava assim que esta conferência termina: se a execução for
+        // cortada pelo tempo limite, o que já foi conferido não se perde
+        await gravarRevisao(admin, { titulo: d.titulo, dia: d.dia, link, resultado, hoje });
+        return resultado.status;
+      })
   );
 
   return {
     revisados: resultados.length,
-    prorrogados: resultados.filter((r) => r.status === "prorrogado").length,
-    semLink: resultados.filter((r) => !r.temLink).length,
+    prorrogados: resultados.filter((s) => s === "prorrogado").length,
+    semLink,
   };
 }

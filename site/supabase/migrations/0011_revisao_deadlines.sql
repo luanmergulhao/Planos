@@ -1,7 +1,7 @@
--- Revisão diária de prorrogação dos deadlines D/DP da linha A.
+-- Revisão de prorrogação dos deadlines D/DP da linha A.
 -- A equipe já fazia isso à mão, anotando "revisado DD/MM" na descrição
--- do evento no Google Agenda. Aqui a IA confere todo dia sozinha e o
--- resultado aparece dentro da própria linha A do Plano.
+-- do evento no Google Agenda. Aqui a IA confere — sozinha uma vez por
+-- dia, ou na hora, pelo botão que fica ao lado de cada deadline.
 
 create table if not exists deadline_revisoes (
   id uuid primary key default gen_random_uuid(),
@@ -24,10 +24,8 @@ create table if not exists deadline_revisoes (
 
 create index if not exists idx_deadline_revisoes_dia on deadline_revisoes(revisado_dia desc);
 
--- Cache do link de cada edital. Ninguém preenche isso na mão: o site
--- casa o evento da agenda com o edital já cadastrado no quadro de
--- Editais (que a Triagem preenche com link) e guarda aqui pra não
--- precisar procurar de novo todo dia.
+-- O link do edital, colado uma vez ao lado do deadline na linha A e
+-- reaproveitado em todas as conferências seguintes.
 create table if not exists deadline_links (
   chave_evento text primary key,
   link text not null,
@@ -37,20 +35,25 @@ create table if not exists deadline_links (
 alter table deadline_revisoes enable row level security;
 alter table deadline_links enable row level security;
 
--- leitura pra equipe; escrita só pelo servidor (service role), que é
--- quem roda a revisão
+-- revisão: a equipe lê; quem grava é o servidor, que é quem chama a IA
 drop policy if exists "deadline_revisoes_select_all" on deadline_revisoes;
 create policy "deadline_revisoes_select_all" on deadline_revisoes
   for select to authenticated using (true);
 
+-- link: a equipe inteira lê e grava, igual ao quadro de Editais
 drop policy if exists "deadline_links_select_all" on deadline_links;
 drop policy if exists "deadline_links_insert" on deadline_links;
 drop policy if exists "deadline_links_update" on deadline_links;
 drop policy if exists "deadline_links_delete" on deadline_links;
+drop policy if exists "deadline_links_write" on deadline_links;
+
 create policy "deadline_links_select_all" on deadline_links
   for select to authenticated using (true);
 
--- um link que já sabemos, pra primeira revisão não sair vazia
+create policy "deadline_links_write" on deadline_links
+  for all to authenticated using (true) with check (true);
+
+-- um link que já sabemos, pra não começar do zero
 insert into deadline_links (chave_evento, link)
 values ('firjan mosaico rio 2027 multilinguagens', 'https://www.firjan.com.br/editaisculturais')
 on conflict (chave_evento) do nothing;

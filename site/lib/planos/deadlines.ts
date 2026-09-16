@@ -39,9 +39,11 @@ export type RevisaoResumo = {
   revisado_em: string;
 };
 
-/** Indexado por `${titulo do evento}|${dia}`. */
 export type DeadlinesComRevisao = DeadlinesLinhaA & {
+  /** Indexado por `${titulo do evento}|${dia}`. */
   revisoes: Record<string, RevisaoResumo>;
+  /** Link do edital salvo, indexado pela chave do evento. */
+  links: Record<string, string>;
 };
 
 // "D " ou "DP " seguidos de espaço. O espaço é essencial: sem ele
