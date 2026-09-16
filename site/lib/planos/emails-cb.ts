@@ -19,15 +19,16 @@ function dataBR(iso: string) {
 }
 
 export async function resumirEmailsNoPlano(admin: Client) {
-  const caixa = process.env.EMAIL_CAIXA;
-  if (!caixa) return { lidos: 0, adicionados: 0 };
+  // A caixa de e-mail do trabalho e o login do site costumam ser contas
+  // diferentes, então quem recebe as tarefas é configurado à parte.
+  const destino = process.env.EMAIL_PLANO_DESTINO ?? process.env.EMAIL_CAIXA;
+  if (!destino) return { lidos: 0, adicionados: 0, motivo: "EMAIL_PLANO_DESTINO não configurado" };
 
-  // o Plano que recebe as tarefas é o de quem é dono da caixa lida
-  const { data: perfil } = await admin.from("profiles").select("id").eq("email", caixa).maybeSingle();
-  if (!perfil) return { lidos: 0, adicionados: 0 };
+  const { data: perfil } = await admin.from("profiles").select("id").eq("email", destino).maybeSingle();
+  if (!perfil) return { lidos: 0, adicionados: 0, motivo: `nenhum usuário do site tem o e-mail ${destino}` };
 
   const { data: plano } = await admin.from("planos").select("id").eq("owner_id", perfil.id).maybeSingle();
-  if (!plano) return { lidos: 0, adicionados: 0 };
+  if (!plano) return { lidos: 0, adicionados: 0, motivo: `${destino} não tem Plano` };
 
   const { data: categoria } = await admin
     .from("plano_categories")
@@ -35,7 +36,7 @@ export async function resumirEmailsNoPlano(admin: Client) {
     .eq("plano_id", plano.id)
     .eq("code", CATEGORIA_EMAIL)
     .maybeSingle();
-  if (!categoria) return { lidos: 0, adicionados: 0 };
+  if (!categoria) return { lidos: 0, adicionados: 0, motivo: `o Plano não tem a categoria ${CATEGORIA_EMAIL}` };
 
   const emails = await buscarEmailsDaCB({ desdeDias: DIAS_PARA_TRAS });
   if (emails.length === 0) return { lidos: 0, adicionados: 0 };
