@@ -6,12 +6,27 @@
 //   503 pode demorar ~20s pra voltar;
 // - nem todo modelo aceita toda ferramenta nessa chave (403/404/429).
 
-const MODELS = ["gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-3.6-flash"];
+// Em ordem de preferência: os completos primeiro, os "lite" como
+// reserva. A lista é longa de propósito — a sobrecarga é por modelo e
+// varia ao longo do dia, então quanto mais alternativas, maior a chance
+// de a revisão diária conseguir rodar.
+const MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-flash-latest",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-lite-latest",
+];
 
 // As rotas que chamam a IA têm maxDuration de 60s na Vercel. Passado
 // esse tempo a execução é cortada sem aviso, então a chamada desiste
 // antes, com folga pra quem chamou ainda gravar o resultado.
 const BUDGET_MS = 45_000;
+
+// Teto por tentativa: um modelo pendurado consumia o orçamento inteiro
+// sozinho e os outros nem chegavam a ser testados.
+const ATTEMPT_TIMEOUT_MS = 20_000;
 const ROUNDS = 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -47,7 +62,7 @@ export async function callGemini(body: Record<string, unknown>): Promise<string>
             method: "POST",
             headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(Math.max(1, Math.floor(timeLeft()))),
+            signal: AbortSignal.timeout(Math.max(1, Math.min(ATTEMPT_TIMEOUT_MS, Math.floor(timeLeft())))),
           }
         );
       } catch (err) {
