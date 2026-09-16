@@ -11,6 +11,7 @@
 
 import { fetchCalendarEvents, type CalendarEvent } from "@/lib/calendar/ics";
 import { shiftDay, todaySaoPaulo } from "@/lib/planos/day";
+import type { RevisaoStatus } from "@/lib/supabase/types";
 
 export type DeadlineEntry = {
   titulo: string;
@@ -26,6 +27,21 @@ export type DeadlinesLinhaA = {
   inicioSemana: string;
   fimSemana: string;
   fimProximaSemana: string;
+};
+
+/** Última conferência de prorrogação feita pra um deadline. */
+export type RevisaoResumo = {
+  status: RevisaoStatus;
+  novo_deadline: string | null;
+  novo_deadline_texto: string | null;
+  evidencia: string | null;
+  fonte_link: string | null;
+  revisado_em: string;
+};
+
+/** Indexado por `${titulo do evento}|${dia}`. */
+export type DeadlinesComRevisao = DeadlinesLinhaA & {
+  revisoes: Record<string, RevisaoResumo>;
 };
 
 // "D " ou "DP " seguidos de espaço. O espaço é essencial: sem ele

@@ -185,7 +185,6 @@ export type Database = {
         Row: {
           chave_evento: string;
           link: string;
-          updated_by: string | null;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["deadline_links"]["Row"]> & {
@@ -193,15 +192,7 @@ export type Database = {
           link: string;
         };
         Update: Partial<Database["public"]["Tables"]["deadline_links"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "deadline_links_updated_by_fkey";
-            columns: ["updated_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       plano_shares: {
         Row: {

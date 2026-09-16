@@ -1,13 +1,13 @@
--- Revisão diária de prorrogação dos deadlines da agenda (D/DP).
+-- Revisão diária de prorrogação dos deadlines D/DP da linha A.
 -- A equipe já fazia isso à mão, anotando "revisado DD/MM" na descrição
--- do evento no Google Agenda; aqui a IA confere e o resultado de cada
--- dia fica guardado.
+-- do evento no Google Agenda. Aqui a IA confere todo dia sozinha e o
+-- resultado aparece dentro da própria linha A do Plano.
 
-create table deadline_revisoes (
+create table if not exists deadline_revisoes (
   id uuid primary key default gen_random_uuid(),
   -- título normalizado (sem prefixo D/DP, datas e horários), pra a
-  -- mesma revisão continuar ligada ao edital quando a equipe renomeia
-  -- o evento de D pra DP ou troca a data no título
+  -- revisão continuar ligada ao edital quando a equipe renomeia o
+  -- evento de D pra DP ou troca a data no título
   chave_evento text not null,
   titulo_evento text not null,
   deadline_agenda date not null,
@@ -22,33 +22,35 @@ create table deadline_revisoes (
   unique (chave_evento, deadline_agenda, revisado_dia)
 );
 
-create index idx_deadline_revisoes_dia on deadline_revisoes(revisado_dia desc);
+create index if not exists idx_deadline_revisoes_dia on deadline_revisoes(revisado_dia desc);
 
--- A agenda não guarda o link do edital, então ele é cadastrado uma vez
--- pela equipe e reaproveitado em todas as revisões seguintes.
-create table deadline_links (
+-- Cache do link de cada edital. Ninguém preenche isso na mão: o site
+-- casa o evento da agenda com o edital já cadastrado no quadro de
+-- Editais (que a Triagem preenche com link) e guarda aqui pra não
+-- precisar procurar de novo todo dia.
+create table if not exists deadline_links (
   chave_evento text primary key,
   link text not null,
-  updated_by uuid references profiles(id),
   updated_at timestamptz not null default now()
 );
 
 alter table deadline_revisoes enable row level security;
-
-create policy "deadline_revisoes_select_all" on deadline_revisoes
-  for select to authenticated using (true);
--- sem policy de escrita: só o servidor (service role) grava revisão
-
 alter table deadline_links enable row level security;
 
+-- leitura pra equipe; escrita só pelo servidor (service role), que é
+-- quem roda a revisão
+drop policy if exists "deadline_revisoes_select_all" on deadline_revisoes;
+create policy "deadline_revisoes_select_all" on deadline_revisoes
+  for select to authenticated using (true);
+
+drop policy if exists "deadline_links_select_all" on deadline_links;
+drop policy if exists "deadline_links_insert" on deadline_links;
+drop policy if exists "deadline_links_update" on deadline_links;
+drop policy if exists "deadline_links_delete" on deadline_links;
 create policy "deadline_links_select_all" on deadline_links
   for select to authenticated using (true);
 
-create policy "deadline_links_insert" on deadline_links
-  for insert to authenticated with check (updated_by = auth.uid());
-
-create policy "deadline_links_update" on deadline_links
-  for update to authenticated using (true) with check (updated_by = auth.uid());
-
-create policy "deadline_links_delete" on deadline_links
-  for delete to authenticated using (true);
+-- um link que já sabemos, pra primeira revisão não sair vazia
+insert into deadline_links (chave_evento, link)
+values ('firjan mosaico rio 2027 multilinguagens', 'https://www.firjan.com.br/editaisculturais')
+on conflict (chave_evento) do nothing;

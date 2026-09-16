@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanoItemRow } from "@/components/plano/PlanoItemRow";
 import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
 import type { CategoryRow, ItemRow } from "@/components/plano/types";
-import type { DeadlinesLinhaA } from "@/lib/planos/deadlines";
+import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
 
 export function CategorySection({
   category,
@@ -24,7 +24,7 @@ export function CategorySection({
   items: ItemRow[];
   canEdit: boolean;
   isManager: boolean;
-  deadlines: DeadlinesLinhaA | null;
+  deadlines: DeadlinesComRevisao | null;
   onAddItem: () => void;
   onUpdateItem: (itemId: string, patch: Partial<ItemRow>) => void;
   onDeleteItem: (itemId: string) => void;

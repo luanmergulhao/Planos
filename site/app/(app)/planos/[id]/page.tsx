@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth/current-user";
 import { PlanoEditor } from "@/components/plano/PlanoEditor";
 import { todaySaoPaulo } from "@/lib/planos/day";
 import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
+import { getRevisoesRecentes } from "@/lib/planos/revisao-deadlines";
 
 export default async function PlanoPage({
   params,
@@ -77,7 +78,12 @@ export default async function PlanoPage({
 
   const { data: teamProfiles } = await supabase.from("profiles").select("id, full_name, email");
 
-  const deadlines = await getDeadlinesLinhaA();
+  const deadlinesLinhaA = await getDeadlinesLinhaA();
+  const revisoes = await getRevisoesRecentes(supabase, [
+    ...deadlinesLinhaA.semana,
+    ...deadlinesLinhaA.proximaSemana,
+  ]);
+  const deadlines = { ...deadlinesLinhaA, revisoes };
 
   const { data: ownerProfile } = await supabase
     .from("profiles")

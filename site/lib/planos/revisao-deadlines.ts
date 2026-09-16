@@ -1,13 +1,15 @@
 // Revisão diária de prorrogação: pega os deadlines D/DP da linha A
 // (desta semana e da próxima), pergunta à IA se cada um foi prorrogado,
-// e grava o resultado com a data da revisão.
+// e grava o resultado com a data da revisão. Roda sozinha pelo cron —
+// não tem tela nem botão, o resultado aparece na própria linha A.
 
-import type { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkProrrogacao, type ProrrogacaoResult } from "@/lib/ai/prorrogacao";
-import { getDeadlinesLinhaA, type DeadlineEntry } from "@/lib/planos/deadlines";
+import { getDeadlinesLinhaA, type DeadlineEntry, type RevisaoResumo } from "@/lib/planos/deadlines";
 import { todaySaoPaulo } from "@/lib/planos/day";
+import type { Database } from "@/lib/supabase/types";
 
-type Admin = ReturnType<typeof createAdminClient>;
+type Client = SupabaseClient<Database>;
 
 /** Título sem prefixo D/DP, datas e horários — continua igual quando a
  *  equipe renomeia o evento de D pra DP ou atualiza a data no título. */
@@ -26,22 +28,82 @@ export async function deadlinesParaRevisar(hoje = todaySaoPaulo()): Promise<Dead
   return [...semana, ...proximaSemana];
 }
 
+/** Última revisão de cada deadline, pra mostrar dentro da linha A. */
+export async function getRevisoesRecentes(
+  client: Client,
+  deadlines: DeadlineEntry[]
+): Promise<Record<string, RevisaoResumo>> {
+  if (deadlines.length === 0) return {};
+
+  const { data } = await client
+    .from("deadline_revisoes")
+    .select("titulo_evento, deadline_agenda, status, novo_deadline, novo_deadline_texto, evidencia, fonte_link, revisado_em")
+    .in("chave_evento", deadlines.map((d) => chaveEvento(d.titulo)))
+    .order("revisado_em", { ascending: false });
+
+  const porChave: Record<string, RevisaoResumo> = {};
+  for (const r of data ?? []) {
+    // vem da mais recente pra mais antiga: a primeira de cada deadline
+    // é a última revisão feita
+    const k = `${r.titulo_evento}|${r.deadline_agenda}`;
+    porChave[k] ??= {
+      status: r.status,
+      novo_deadline: r.novo_deadline,
+      novo_deadline_texto: r.novo_deadline_texto,
+      evidencia: r.evidencia,
+      fonte_link: r.fonte_link,
+      revisado_em: r.revisado_em,
+    };
+  }
+  return porChave;
+}
+
+// O link vem do cache ou do quadro de Editais, onde a Triagem já
+// cadastra o link de cada edital. Nada é digitado à mão pra isso.
+async function resolverLinks(client: Client, chaves: string[]): Promise<Map<string, string>> {
+  const [{ data: cache }, { data: editais }] = await Promise.all([
+    client.from("deadline_links").select("chave_evento, link").in("chave_evento", chaves),
+    client.from("editais").select("titulo, link").not("link", "is", null),
+  ]);
+
+  const porChave = new Map((cache ?? []).map((l) => [l.chave_evento, l.link]));
+  const descobertos: { chave_evento: string; link: string }[] = [];
+
+  for (const edital of editais ?? []) {
+    const chaveEdital = chaveEvento(edital.titulo);
+    // chave curta demais casaria com qualquer coisa
+    if (chaveEdital.length < 8 || !edital.link) continue;
+
+    for (const chave of chaves) {
+      if (porChave.has(chave)) continue;
+      if (chave === chaveEdital || chave.includes(chaveEdital) || chaveEdital.includes(chave)) {
+        porChave.set(chave, edital.link);
+        descobertos.push({ chave_evento: chave, link: edital.link });
+      }
+    }
+  }
+
+  if (descobertos.length > 0) {
+    await client.from("deadline_links").upsert(descobertos, { onConflict: "chave_evento" });
+  }
+
+  return porChave;
+}
+
 export async function runRevisaoDeadlines(
-  admin: Admin,
+  admin: Client,
   { hoje = todaySaoPaulo(), refazerHoje = false }: { hoje?: string; refazerHoje?: boolean } = {}
 ) {
   const deadlines = await deadlinesParaRevisar(hoje);
-  if (deadlines.length === 0) return { revisados: 0, prorrogados: 0 };
+  if (deadlines.length === 0) return { revisados: 0, prorrogados: 0, semLink: 0 };
 
   const chaves = deadlines.map((d) => chaveEvento(d.titulo));
-  const [{ data: links }, { data: jaRevisados }] = await Promise.all([
-    admin.from("deadline_links").select("chave_evento, link").in("chave_evento", chaves),
+  const [linkPorChave, { data: jaRevisados }] = await Promise.all([
+    resolverLinks(admin, chaves),
     admin.from("deadline_revisoes").select("chave_evento, deadline_agenda").eq("revisado_dia", hoje),
   ]);
 
-  const linkPorChave = new Map((links ?? []).map((l) => [l.chave_evento, l.link]));
   const feitosHoje = new Set((jaRevisados ?? []).map((r) => `${r.chave_evento}|${r.deadline_agenda}`));
-
   const pendentes = deadlines.filter(
     (d) => refazerHoje || !feitosHoje.has(`${chaveEvento(d.titulo)}|${d.dia}`)
   );
@@ -62,7 +124,7 @@ export async function runRevisaoDeadlines(
           novo_deadline_texto: null,
           evidencia: link
             ? `Não deu pra consultar a página do edital (${detalhe}).`
-            : `Sem link cadastrado — cadastre o link do edital nesta aba. A busca automática no Google exige faturamento ativo no Gemini (${detalhe}).`,
+            : `Esse edital não está no quadro de Editais com link, então não há página oficial pra conferir (${detalhe}).`,
           fonte_link: null,
         };
       }
@@ -87,12 +149,13 @@ export async function runRevisaoDeadlines(
         { onConflict: "chave_evento,deadline_agenda,revisado_dia" }
       );
 
-      return resultado.status;
+      return { status: resultado.status, temLink: link !== null };
     })
   );
 
   return {
     revisados: resultados.length,
-    prorrogados: resultados.filter((status) => status === "prorrogado").length,
+    prorrogados: resultados.filter((r) => r.status === "prorrogado").length,
+    semLink: resultados.filter((r) => !r.temLink).length,
   };
 }
