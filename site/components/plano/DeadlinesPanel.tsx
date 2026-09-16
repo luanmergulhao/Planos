@@ -66,7 +66,27 @@ function ResultadoRevisao({ revisao, titulo }: { revisao: RevisaoResumo; titulo:
   );
 }
 
-function LinhaDeadline({
+function Cabecalho({ entrada, revisao }: { entrada: DeadlineEntry; revisao: RevisaoResumo | undefined }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <Badge variant="outline" className="shrink-0 tabular-nums">
+        {diaCurto(entrada.dia)}
+      </Badge>
+      <span>{entrada.titulo}</span>
+      {entrada.divergencia && (
+        <Badge variant="destructive" className="gap-1">
+          <AlertTriangle className="size-3" />
+          título diz {diaCurto(entrada.divergencia)}
+        </Badge>
+      )}
+      {revisao && <ResultadoRevisao revisao={revisao} titulo={entrada.titulo} />}
+    </div>
+  );
+}
+
+// Deadline desta semana: é o único que a equipe acompanha contra
+// prorrogação, então só ele ganha campo de link e botão de conferir.
+function LinhaComConferencia({
   entrada,
   linkInicial,
   revisaoInicial,
@@ -145,19 +165,7 @@ function LinhaDeadline({
 
   return (
     <li className="flex flex-col gap-1.5 rounded-md border bg-background p-2">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Badge variant="outline" className="shrink-0 tabular-nums">
-          {diaCurto(entrada.dia)}
-        </Badge>
-        <span>{entrada.titulo}</span>
-        {entrada.divergencia && (
-          <Badge variant="destructive" className="gap-1">
-            <AlertTriangle className="size-3" />
-            título diz {diaCurto(entrada.divergencia)}
-          </Badge>
-        )}
-        {revisao && <ResultadoRevisao revisao={revisao} titulo={entrada.titulo} />}
-      </div>
+      <Cabecalho entrada={entrada} revisao={revisao} />
 
       <div className="flex flex-wrap items-center gap-2">
         <Input
@@ -189,12 +197,14 @@ function Bloco({
   entradas,
   revisoes,
   links,
+  comConferencia,
 }: {
   titulo: string;
   periodo: string;
   entradas: DeadlineEntry[];
   revisoes: Record<string, RevisaoResumo>;
   links: Record<string, string>;
+  comConferencia: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -206,15 +216,21 @@ function Bloco({
       {entradas.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nenhum deadline nesse período.</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {entradas.map((e) => (
-            <LinhaDeadline
-              key={e.titulo + e.dia}
-              entrada={e}
-              linkInicial={links[chaveEvento(e.titulo)] ?? ""}
-              revisaoInicial={revisoes[`${e.titulo}|${e.dia}`]}
-            />
-          ))}
+        <ul className={comConferencia ? "flex flex-col gap-2" : "flex flex-col gap-1"}>
+          {entradas.map((e) =>
+            comConferencia ? (
+              <LinhaComConferencia
+                key={e.titulo + e.dia}
+                entrada={e}
+                linkInicial={links[chaveEvento(e.titulo)] ?? ""}
+                revisaoInicial={revisoes[`${e.titulo}|${e.dia}`]}
+              />
+            ) : (
+              <li key={e.titulo + e.dia}>
+                <Cabecalho entrada={e} revisao={revisoes[`${e.titulo}|${e.dia}`]} />
+              </li>
+            )
+          )}
         </ul>
       )}
     </div>
@@ -229,8 +245,7 @@ export function DeadlinesPanel({ deadlines }: { deadlines: DeadlinesComRevisao }
     <div className="flex flex-col gap-4 rounded-md border bg-muted/30 p-3">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <CalendarClock className="size-3.5" />
-        Puxado da agenda do Google — só eventos que começam com D ou DP. O link fica salvo e a
-        conferência também roda sozinha uma vez por dia.
+        Puxado da agenda do Google — só eventos que começam com D ou DP
       </div>
 
       <Bloco
@@ -239,6 +254,7 @@ export function DeadlinesPanel({ deadlines }: { deadlines: DeadlinesComRevisao }
         entradas={semana}
         revisoes={revisoes}
         links={links}
+        comConferencia
       />
       <Bloco
         titulo="Deadlines da próxima semana"
@@ -246,6 +262,7 @@ export function DeadlinesPanel({ deadlines }: { deadlines: DeadlinesComRevisao }
         entradas={proximaSemana}
         revisoes={revisoes}
         links={links}
+        comConferencia={false}
       />
 
       {temDivergencia && (

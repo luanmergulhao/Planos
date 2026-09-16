@@ -12,9 +12,11 @@ import type { Database } from "@/lib/supabase/types";
 
 type Client = SupabaseClient<Database>;
 
+// Só os desta semana: deadline da próxima semana ainda não precisa ser
+// vigiado contra prorrogação — quando virar semana atual, entra sozinho.
 export async function deadlinesParaRevisar(hoje = todaySaoPaulo()): Promise<DeadlineEntry[]> {
-  const { semana, proximaSemana } = await getDeadlinesLinhaA(hoje);
-  return [...semana, ...proximaSemana];
+  const { semana } = await getDeadlinesLinhaA(hoje);
+  return semana;
 }
 
 /** Links já salvos, indexados pela chave do evento. */
