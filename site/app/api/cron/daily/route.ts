@@ -5,6 +5,7 @@ import { computeEditaisDigest, ACTIVE_FASES } from "@/lib/editais";
 import { searchResultados, type ResultadoFinding } from "@/lib/ai/resultados";
 import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
 import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
+import { resumirEmailsNoPlano } from "@/lib/planos/emails-cb";
 import { todaySaoPaulo } from "@/lib/planos/day";
 
 export const maxDuration = 60;
@@ -266,6 +267,18 @@ async function notifyDeadlinesDaSemana(admin: ReturnType<typeof createAdminClien
   return teamProfiles.length;
 }
 
+// Coluna C: lê a caixa de e-mail e transforma o que a CB pediu em linhas
+// do Plano. Best-effort igual à busca de resultados — se a caixa não
+// estiver configurada ou o IMAP falhar, o resto da rotina segue.
+async function resumirEmails(admin: ReturnType<typeof createAdminClient>) {
+  try {
+    const { adicionados } = await resumirEmailsNoPlano(admin);
+    return adicionados;
+  } catch {
+    return 0;
+  }
+}
+
 async function sweepStaleSessions(admin: ReturnType<typeof createAdminClient>) {
   const cutoff = new Date(Date.now() - HEARTBEAT_TIMEOUT_MINUTES * 60 * 1000).toISOString();
 
@@ -301,6 +314,7 @@ export async function GET(request: Request) {
     sessionsClosed,
     resultadosEncontrados,
     deadlinesDaSemanaNotified,
+    emailsAdicionados,
   ] = await Promise.all([
     scanPlanoDeadlines(admin),
     scanEditalDeadlines(admin),
@@ -308,6 +322,7 @@ export async function GET(request: Request) {
     sweepStaleSessions(admin),
     searchAndNotifyResultados(admin),
     notifyDeadlinesDaSemana(admin),
+    resumirEmails(admin),
   ]);
 
   return NextResponse.json({
@@ -318,5 +333,6 @@ export async function GET(request: Request) {
     sessionsClosed,
     resultadosEncontrados,
     deadlinesDaSemanaNotified,
+    emailsAdicionados,
   });
 }

@@ -23,6 +23,9 @@ export type ResumoEmail = {
   tarefa_solicitada: string;
   /** false quando o e-mail é só aviso, sem nada pedido */
   tem_tarefa: boolean;
+  /** notificação automática de comentário em documento — essas ficam
+   *  fora do Plano, porque comentário já tem lugar próprio lá */
+  eh_comentario: boolean;
 };
 
 const RESPONSE_SCHEMA = {
@@ -38,8 +41,9 @@ const RESPONSE_SCHEMA = {
           data: { type: "STRING", description: "AAAA-MM-DD" },
           tarefa_solicitada: { type: "STRING" },
           tem_tarefa: { type: "BOOLEAN" },
+          eh_comentario: { type: "BOOLEAN" },
         },
-        required: ["id", "titulo", "data", "tarefa_solicitada", "tem_tarefa"],
+        required: ["id", "titulo", "data", "tarefa_solicitada", "tem_tarefa", "eh_comentario"],
       },
     },
   },
@@ -62,7 +66,8 @@ Regras obrigatórias:
 - "data": a data de recebimento, no formato AAAA-MM-DD.
 - "tem_tarefa": true só quando há algo concreto pedido à equipe. Aviso, agradecimento, confirmação ou e-mail só informativo é false.
 - Quando "tem_tarefa" for false, deixe "tarefa_solicitada" como string vazia.
-- Notificação automática de comentário em documento (Google Docs, Drive, "comentou em", "mentioned you") NÃO é pedido por e-mail: marque "tem_tarefa" como false. Comentário já tem lugar próprio no Plano.
+- "eh_comentario": true APENAS quando o e-mail for notificação automática de comentário em documento (Google Docs, Drive, "comentou em", "respondeu a um comentário", "mentioned you"). E-mail escrito pela própria CB é sempre false, mesmo que fale sobre um comentário.
+- "eh_comentario" e "tem_tarefa" são independentes: um e-mail informativo escrito por ela tem "eh_comentario" false e "tem_tarefa" false.
 - Se o e-mail pedir várias coisas, junte no mesmo "tarefa_solicitada", separadas por ponto e vírgula.
 - Não invente prazo, valor nem nome que não esteja escrito no e-mail.
 - Devolva um item por e-mail, com o campo "id" EXATAMENTE igual ao fornecido.

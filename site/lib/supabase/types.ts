@@ -194,6 +194,31 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["deadline_links"]["Row"]>;
         Relationships: [];
       };
+      email_resumos: {
+        Row: {
+          message_id: string;
+          plano_item_id: string | null;
+          assunto: string;
+          data_email: string;
+          tarefa: string | null;
+          criado_em: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["email_resumos"]["Row"]> & {
+          message_id: string;
+          assunto: string;
+          data_email: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["email_resumos"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "email_resumos_plano_item_id_fkey";
+            columns: ["plano_item_id"];
+            isOneToOne: false;
+            referencedRelation: "plano_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       plano_shares: {
         Row: {
           id: string;
