@@ -4,6 +4,7 @@ import { PlanoEditor } from "@/components/plano/PlanoEditor";
 import { todaySaoPaulo } from "@/lib/planos/day";
 import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
 import { getLinksSalvos, getRevisoesRecentes } from "@/lib/planos/revisao-deadlines";
+import { getTriagensLinhaE } from "@/lib/planos/triagens";
 
 export default async function PlanoPage({
   params,
@@ -85,6 +86,7 @@ export default async function PlanoPage({
     getLinksSalvos(supabase, entradasLinhaA),
   ]);
   const deadlines = { ...deadlinesLinhaA, revisoes, links };
+  const triagens = await getTriagensLinhaE(supabase);
 
   const { data: ownerProfile } = await supabase
     .from("profiles")
@@ -105,6 +107,7 @@ export default async function PlanoPage({
       planoDay={planoDay ?? null}
       previousDayWithItems={previousDayWithItems}
       deadlines={deadlines}
+      triagens={triagens}
       shares={
         (shares ?? []).map((s) => ({
           id: s.id,

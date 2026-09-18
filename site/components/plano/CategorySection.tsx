@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanoItemRow } from "@/components/plano/PlanoItemRow";
 import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
+import { TriagemPanel } from "@/components/plano/TriagemPanel";
 import type { CategoryRow, ItemRow } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
+import type { TriagensLinhaE } from "@/lib/planos/triagens";
 
 export function CategorySection({
   category,
@@ -14,6 +16,7 @@ export function CategorySection({
   canEdit,
   isManager,
   deadlines,
+  triagens,
   onAddItem,
   onUpdateItem,
   onDeleteItem,
@@ -25,6 +28,7 @@ export function CategorySection({
   canEdit: boolean;
   isManager: boolean;
   deadlines: DeadlinesComRevisao | null;
+  triagens: TriagensLinhaE | null;
   onAddItem: () => void;
   onUpdateItem: (itemId: string, patch: Partial<ItemRow>) => void;
   onDeleteItem: (itemId: string) => void;
@@ -46,6 +50,7 @@ export function CategorySection({
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {deadlines && <DeadlinesPanel deadlines={deadlines} />}
+        {triagens && <TriagemPanel triagens={triagens} />}
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma tarefa ainda nessa categoria.</p>
         ) : (

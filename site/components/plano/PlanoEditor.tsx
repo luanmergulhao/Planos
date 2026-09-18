@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatDayLabel, shiftDay } from "@/lib/planos/day";
 import type { CategoryRow, ItemRow, PlanoDayRow, PlanoRow, ShareEntry, TeamProfile } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
+import type { TriagensLinhaE } from "@/lib/planos/triagens";
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -32,6 +33,7 @@ export function PlanoEditor({
   planoDay: initialPlanoDay,
   previousDayWithItems,
   deadlines,
+  triagens,
   shares,
   teamProfiles,
   currentUserId,
@@ -48,6 +50,7 @@ export function PlanoEditor({
   planoDay: PlanoDayRow | null;
   previousDayWithItems: string | null;
   deadlines: DeadlinesComRevisao;
+  triagens: TriagensLinhaE;
   shares: ShareEntry[];
   teamProfiles: TeamProfile[];
   currentUserId: string;
@@ -233,6 +236,7 @@ export function PlanoEditor({
             canEdit={canEdit}
             isManager={isManager}
             deadlines={category.code === "A" ? deadlines : null}
+            triagens={category.code === "E" ? triagens : null}
             onAddItem={() => handleAddItem(category.id)}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
