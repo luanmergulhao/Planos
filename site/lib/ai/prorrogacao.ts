@@ -1,10 +1,12 @@
 import { callGemini } from "@/lib/ai/gemini";
+import { getPromptTexto, renderPrompt } from "@/lib/ai/prompts";
 import type { RevisaoStatus } from "@/lib/supabase/types";
 
 // Confere, com IA, se o deadline de UM edital foi prorrogado, mantido ou
 // encerrado. Com link cadastrado a IA lê a página oficial (e os PDFs de
 // retificação linkados nela); sem link ela tenta achar pela busca do
 // Google — que só funciona com faturamento ativo na conta do Gemini.
+// O texto do prompt vem do banco, editável na aba Prompts.
 
 export type ProrrogacaoResult = {
   status: RevisaoStatus;
@@ -30,30 +32,6 @@ function dataBR(iso: string) {
   return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 }
 
-function buildPrompt(titulo: string, deadline: string, link: string | null): string {
-  const origem = link
-    ? `Link oficial do edital: ${link}\nUse essa página e os documentos oficiais linkados nela (edital em PDF, retificações, erratas, avisos).`
-    : `Não temos o link do edital. Pesquise na internet a página oficial dele e os comunicados oficiais do órgão responsável.`;
-
-  return `Você é um assistente de monitoramento de editais culturais, leis de incentivo e chamadas públicas. Sua tarefa é conferir se o prazo de inscrição de UM edital foi prorrogado, mantido ou encerrado.
-
-Edital (como está anotado na nossa agenda): ${titulo}
-Deadline que temos anotado: ${dataBR(deadline)}
-${origem}
-
-Procure especificamente por: aviso de prorrogação, retificação, errata, novo cronograma, adiamento, suspensão ou cancelamento das inscrições.
-
-Regras obrigatórias:
-- Não invente. Se não encontrar evidência oficial clara, use status "nao_confirmado".
-- "prorrogado": só se houver comunicado oficial com nova data de inscrição POSTERIOR a ${dataBR(deadline)}.
-- "mantido": a fonte oficial confirma a mesma data que temos anotada.
-- "encerrado": inscrições encerradas antes do prazo, suspensas, ou edital cancelado.
-- novo_deadline_iso: só quando "prorrogado" — a nova data no formato YYYY-MM-DD, convertida pro fuso de Brasília. Nos demais casos, null.
-- novo_deadline_texto: só quando "prorrogado" — data, hora e fuso exatamente como aparecem na fonte (ex: "25/09/2026 às 18h, horário de Brasília"). Nos demais casos, null.
-- evidencia: uma frase curta dizendo onde está a informação (ex: "Aviso de prorrogação publicado em 10/09 na página do edital").
-- fonte_link: link direto da página ou documento onde encontrou a informação, ou null.`;
-}
-
 function extractJsonText(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   return fenced ? fenced[1].trim() : text.trim();
@@ -68,8 +46,18 @@ export async function checkProrrogacao({
   deadline: string;
   link: string | null;
 }): Promise<ProrrogacaoResult> {
+  const origem = link
+    ? `Link oficial do edital: ${link}\nUse essa página e os documentos oficiais linkados nela (edital em PDF, retificações, erratas, avisos).`
+    : `Não temos o link do edital. Pesquise na internet a página oficial dele e os comunicados oficiais do órgão responsável.`;
+
+  const prompt = renderPrompt(await getPromptTexto("prorrogacao"), {
+    titulo,
+    deadline: dataBR(deadline),
+    origem,
+  });
+
   const text = await callGemini({
-    contents: [{ parts: [{ text: buildPrompt(titulo, deadline, link) }] }],
+    contents: [{ parts: [{ text: prompt }] }],
     tools: [link ? { url_context: {} } : { google_search: {} }],
     generationConfig: {
       responseMimeType: "application/json",

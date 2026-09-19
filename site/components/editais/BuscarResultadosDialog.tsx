@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { TIPO_RESULTADO_LABEL, type ResultadoFinding } from "@/lib/ai/resultados";
+import { TIPO_RESULTADO_LABEL, type ResultadoFinding } from "@/lib/ai/resultados-tipos";
 
 type Finding = ResultadoFinding & { titulo: string };
 

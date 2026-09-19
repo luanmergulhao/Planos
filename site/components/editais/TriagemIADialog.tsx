@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { TRIAGEM_FIELDS, type TriagemResult } from "@/lib/ai/triagem";
+import { TRIAGEM_FIELDS, type TriagemResult } from "@/lib/ai/triagem-campos";
 
 type Step = "link" | "loading" | "review" | "error";
 

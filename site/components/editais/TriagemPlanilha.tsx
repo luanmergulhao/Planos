@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FASE_LABEL, ACTIVE_FASES } from "@/lib/editais";
-import type { ResultadoFinding } from "@/lib/ai/resultados";
+import type { ResultadoFinding } from "@/lib/ai/resultados-tipos";
 import type { EditalRow } from "@/components/editais/types";
 import type { EditalFase } from "@/lib/supabase/types";
 import type { TeamProfile } from "@/components/plano/types";
