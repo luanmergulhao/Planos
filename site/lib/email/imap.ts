@@ -8,7 +8,7 @@ import type { EmailBruto } from "@/lib/ai/resumo-email";
 
 // Corta a parte citada da conversa: o histórico repetido a cada resposta
 // só gasta contexto da IA e atrapalha o resumo.
-function limparCorpo(texto: string): string {
+export function limparCorpo(texto: string): string {
   const marcadores = [
     /^\s*Em .+escreveu:\s*$/im,
     /^\s*On .+wrote:\s*$/im,
