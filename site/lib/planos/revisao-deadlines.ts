@@ -4,7 +4,7 @@
 // cron, e na hora pelo botão ao lado de cada deadline.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { checkProrrogacao, type ProrrogacaoResult } from "@/lib/ai/prorrogacao";
+import { checkProrrogacao, type InfoModelo, type ProrrogacaoResult } from "@/lib/ai/prorrogacao";
 import { getDeadlinesLinhaA, type DeadlineEntry, type RevisaoResumo } from "@/lib/planos/deadlines";
 import { chaveEvento } from "@/lib/planos/chave-evento";
 import { todaySaoPaulo } from "@/lib/planos/day";
@@ -106,7 +106,7 @@ async function gravarRevisao(
 export async function revisarUmDeadline(
   admin: Client,
   { titulo, dia }: { titulo: string; dia: string }
-): Promise<RevisaoResumo> {
+): Promise<{ revisao: RevisaoResumo; ia: InfoModelo }> {
   const { data: linkRow } = await admin
     .from("deadline_links")
     .select("link")
@@ -118,8 +118,9 @@ export async function revisarUmDeadline(
     throw new Error("Cole o link do edital antes de conferir.");
   }
 
-  const resultado = await checkProrrogacao({ titulo, deadline: dia, link });
-  return gravarRevisao(admin, { titulo, dia, link, resultado, hoje: todaySaoPaulo() });
+  const { resultado, ia } = await checkProrrogacao({ titulo, deadline: dia, link });
+  const revisao = await gravarRevisao(admin, { titulo, dia, link, resultado, hoje: todaySaoPaulo() });
+  return { revisao, ia };
 }
 
 /** Varredura diária de todos os deadlines da linha A que já têm link. */
@@ -150,7 +151,7 @@ export async function runRevisaoDeadlines(
 
         let resultado: ProrrogacaoResult;
         try {
-          resultado = await checkProrrogacao({ titulo: d.titulo, deadline: d.dia, link });
+          resultado = (await checkProrrogacao({ titulo: d.titulo, deadline: d.dia, link })).resultado;
         } catch (err) {
           const detalhe = err instanceof Error ? err.message.slice(0, 160) : "erro desconhecido";
           resultado = {

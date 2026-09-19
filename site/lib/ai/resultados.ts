@@ -59,7 +59,7 @@ export async function searchResultados(editais: EditalForSearch[]): Promise<Resu
 
   const prompt = renderPrompt(await getPromptTexto("resultados"), { lista });
 
-  const text = await callGemini({
+  const { texto: text } = await callGemini({
     contents: [{ parts: [{ text: prompt }] }],
     tools: [{ google_search: {} }],
     generationConfig: {

@@ -32,6 +32,7 @@ export function TriagemIADialog({
   const [step, setStep] = useState<Step>("link");
   const [link, setLink] = useState("");
   const [result, setResult] = useState<TriagemResult | null>(null);
+  const [ia, setIa] = useState<{ modelo: string; pro: boolean } | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -39,6 +40,7 @@ export function TriagemIADialog({
     setStep("link");
     setLink("");
     setResult(null);
+    setIa(null);
     setErrorMessage("");
   }
 
@@ -54,6 +56,7 @@ export function TriagemIADialog({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "erro desconhecido");
       setResult(data.result);
+      setIa(data.ia ?? null);
       setStep("review");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "erro desconhecido");
@@ -127,6 +130,14 @@ export function TriagemIADialog({
             <p className="text-sm text-muted-foreground">
               Confira as respostas abaixo — pode corrigir qualquer campo antes de criar o edital.
             </p>
+
+            {ia && !ia.pro && (
+              <p className="rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+                Respondido no <strong>modo grátis</strong> ({ia.modelo}), que erra mais que o Pro. A conta
+                do Gemini está sem cota de Pro — ativar faturamento no Google libera o modelo bom.
+                Confira as respostas com atenção.
+              </p>
+            )}
             {TRIAGEM_FIELDS.map((field) => (
               <div key={field.key} className="flex flex-col gap-1">
                 <Label htmlFor={`triagem-${field.key}`}>{field.label}</Label>

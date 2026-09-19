@@ -1,4 +1,4 @@
-import { callGemini } from "@/lib/ai/gemini";
+import { callGemini, type RespostaIA } from "@/lib/ai/gemini";
 import { getPromptTexto, renderPrompt } from "@/lib/ai/prompts";
 import type { RevisaoStatus } from "@/lib/supabase/types";
 
@@ -15,6 +15,8 @@ export type ProrrogacaoResult = {
   evidencia: string;
   fonte_link: string | null;
 };
+
+export type InfoModelo = Pick<RespostaIA, "modelo" | "pro">;
 
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
@@ -45,7 +47,7 @@ export async function checkProrrogacao({
   titulo: string;
   deadline: string;
   link: string | null;
-}): Promise<ProrrogacaoResult> {
+}): Promise<{ resultado: ProrrogacaoResult; ia: InfoModelo }> {
   const origem = link
     ? `Link oficial do edital: ${link}\nUse essa página e os documentos oficiais linkados nela (edital em PDF, retificações, erratas, avisos).`
     : `Não temos o link do edital. Pesquise na internet a página oficial dele e os comunicados oficiais do órgão responsável.`;
@@ -56,7 +58,7 @@ export async function checkProrrogacao({
     origem,
   });
 
-  const text = await callGemini({
+  const { texto: text, modelo, pro } = await callGemini({
     contents: [{ parts: [{ text: prompt }] }],
     tools: [link ? { url_context: {} } : { google_search: {} }],
     generationConfig: {
@@ -79,11 +81,14 @@ export async function checkProrrogacao({
     (!parsed.novo_deadline_iso || parsed.novo_deadline_iso <= deadline)
   ) {
     return {
-      ...parsed,
-      status: "nao_confirmado",
-      evidencia: `Indício de prorrogação, mas sem nova data posterior a ${dataBR(deadline)} confirmada. ${parsed.evidencia}`,
+      resultado: {
+        ...parsed,
+        status: "nao_confirmado",
+        evidencia: `Indício de prorrogação, mas sem nova data posterior a ${dataBR(deadline)} confirmada. ${parsed.evidencia}`,
+      },
+      ia: { modelo, pro },
     };
   }
 
-  return parsed;
+  return { resultado: parsed, ia: { modelo, pro } };
 }

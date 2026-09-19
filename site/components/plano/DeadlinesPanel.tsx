@@ -147,15 +147,20 @@ function LinhaComConferencia({
       }
 
       setRevisao(data.revisao);
-      toast.success(
+
+      const resumo =
         data.revisao.status === "prorrogado"
           ? "Prorrogado! Veja a nova data."
           : data.revisao.status === "encerrado"
             ? "Esse edital consta como encerrado."
             : data.revisao.status === "mantido"
               ? "Prazo confirmado, sem prorrogação."
-              : "Não deu pra confirmar — tente de novo mais tarde."
-      );
+              : "Não deu pra confirmar — tente de novo mais tarde.";
+
+      // o modo grátis responde bem pior; quem lê precisa saber disso
+      toast.success(resumo, {
+        description: data.ia && !data.ia.pro ? "Respondido no modo grátis — qualidade menor." : undefined,
+      });
     } finally {
       setConferindo(false);
     }

@@ -1,4 +1,4 @@
-import { callGemini } from "@/lib/ai/gemini";
+import { callGemini, type RespostaIA } from "@/lib/ai/gemini";
 import { getPromptTexto, renderPrompt } from "@/lib/ai/prompts";
 import { TRIAGEM_FIELDS, type TriagemResult } from "@/lib/ai/triagem-campos";
 
@@ -20,10 +20,14 @@ const RESPONSE_SCHEMA = {
   required: [...TRIAGEM_FIELDS.map((f) => f.key), "deadline_iso_date"],
 };
 
-export async function extractTriagemFromLink(link: string): Promise<TriagemResult> {
+export type InfoModelo = Pick<RespostaIA, "modelo" | "pro">;
+
+export async function extractTriagemFromLink(
+  link: string
+): Promise<{ result: TriagemResult; ia: InfoModelo }> {
   const prompt = renderPrompt(await getPromptTexto("triagem"), { link });
 
-  const text = await callGemini({
+  const { texto, modelo, pro } = await callGemini({
     contents: [{ parts: [{ text: prompt }] }],
     tools: [{ url_context: {} }],
     generationConfig: {
@@ -34,10 +38,10 @@ export async function extractTriagemFromLink(link: string): Promise<TriagemResul
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(texto);
   } catch {
     throw new Error("Não deu pra ler a resposta da IA como JSON");
   }
 
-  return parsed as TriagemResult;
+  return { result: parsed as TriagemResult, ia: { modelo, pro } };
 }

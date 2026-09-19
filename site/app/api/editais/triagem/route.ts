@@ -20,8 +20,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await extractTriagemFromLink(link);
-    return NextResponse.json({ ok: true, result });
+    const { result, ia } = await extractTriagemFromLink(link);
+    return NextResponse.json({ ok: true, result, ia });
   } catch (err) {
     const message = err instanceof Error ? err.message : "erro desconhecido";
     return NextResponse.json({ error: message }, { status: 502 });

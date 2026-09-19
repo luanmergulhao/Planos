@@ -22,8 +22,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const revisao = await revisarUmDeadline(createAdminClient(), { titulo, dia });
-    return NextResponse.json({ ok: true, revisao });
+    const { revisao, ia } = await revisarUmDeadline(createAdminClient(), { titulo, dia });
+    return NextResponse.json({ ok: true, revisao, ia });
   } catch (err) {
     const message = err instanceof Error ? err.message : "erro desconhecido";
     return NextResponse.json({ error: message }, { status: 502 });

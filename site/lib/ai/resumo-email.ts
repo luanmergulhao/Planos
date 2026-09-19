@@ -69,7 +69,7 @@ export async function resumirEmailsDaCB(emails: EmailBruto[]): Promise<ResumoEma
 
   const prompt = renderPrompt(await getPromptTexto("resumo_email"), { lista });
 
-  const text = await callGemini({
+  const { texto: text } = await callGemini({
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       responseMimeType: "application/json",

@@ -1,16 +1,21 @@
 // Chamada base pro Gemini, compartilhada pela Triagem, Busca de
-// Resultados e Revisão de Deadlines. Detalhes que só aparecem na prática:
+// Resultados, Conferência de Prorrogação e Resumo de E-mails.
+//
+// Tenta sempre o modelo Pro primeiro, que responde bem melhor. Sem cota
+// de Pro, cai pro gratuito — mas devolve `pro: false`, pra tela poder
+// avisar que aquela resposta é de qualidade menor. A conta gratuita do
+// Gemini não tem cota de Pro nenhuma: só ativando faturamento.
+//
+// Detalhes que só aparecem na prática:
 // - a chave vai no cabeçalho x-goog-api-key; no parâmetro ?key= da URL
 //   as chaves no formato novo respondem 403;
-// - os modelos flash devolvem 503 ("high demand") com frequência, e cada
-//   503 pode demorar ~20s pra voltar;
+// - os modelos gratuitos devolvem 503 ("high demand") com frequência, e
+//   cada 503 pode demorar ~20s pra voltar;
 // - nem todo modelo aceita toda ferramenta nessa chave (403/404/429).
 
-// Em ordem de preferência: os completos primeiro, os "lite" como
-// reserva. A lista é longa de propósito — a sobrecarga é por modelo e
-// varia ao longo do dia, então quanto mais alternativas, maior a chance
-// de a revisão diária conseguir rodar.
-const MODELS = [
+const PRO_MODELS = ["gemini-3.1-pro-preview", "gemini-pro-latest"];
+
+const GRATIS_MODELS = [
   "gemini-3.8-flash",
   "gemini-3.6-flash",
   "gemini-3.5-flash",
@@ -31,33 +36,36 @@ const ROUNDS = 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function callGemini(body: Record<string, unknown>): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY não configurada");
-  }
+export type RespostaIA = {
+  texto: string;
+  modelo: string;
+  /** false quando a resposta veio do modelo gratuito, de qualidade menor */
+  pro: boolean;
+};
 
-  const startedAt = Date.now();
-  const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
+type Tentativa = { texto: string; modelo: string } | null;
 
+async function tentarModelos(
+  modelos: string[],
+  body: Record<string, unknown>,
+  apiKey: string,
+  timeLeft: () => number,
+  rodadas: number,
+  registrarErro: (erro: string) => void
+): Promise<Tentativa> {
   // 403/404/429 não melhoram tentando de novo o mesmo modelo nessa
   // chamada; só 503 (sobrecarga) e falha de rede merecem outra rodada.
-  const unusable = new Set<string>();
-  let lastError = "erro desconhecido";
+  const inutilizados = new Set<string>();
 
-  // Sobrecarga costuma ser por modelo, então passa pro próximo da lista
-  // em vez de insistir três vezes no mesmo.
-  for (let round = 1; round <= ROUNDS; round++) {
-    for (const model of MODELS) {
-      if (unusable.has(model)) continue;
-      if (timeLeft() <= 0) {
-        throw new Error(`Gemini não respondeu a tempo. Último erro — ${lastError}`);
-      }
+  for (let rodada = 1; rodada <= rodadas; rodada++) {
+    for (const modelo of modelos) {
+      if (inutilizados.has(modelo)) continue;
+      if (timeLeft() <= 0) return null;
 
       let res: Response;
       try {
         res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -66,29 +74,55 @@ export async function callGemini(body: Record<string, unknown>): Promise<string>
           }
         );
       } catch (err) {
-        lastError = `${model}: ${err instanceof Error ? err.message : "falha de rede"}`;
+        registrarErro(`${modelo}: ${err instanceof Error ? err.message : "falha de rede"}`);
         continue;
       }
 
       if (res.ok) {
         const data = await res.json();
-        const text: string | undefined = data?.candidates?.[0]?.content?.parts
+        const texto: string | undefined = data?.candidates?.[0]?.content?.parts
           ?.map((p: { text?: string }) => p.text)
           .filter(Boolean)
           .join("");
-        if (text) return text;
-        lastError = `${model} respondeu sem texto (pode ter bloqueado o conteúdo)`;
-        unusable.add(model);
+        if (texto) return { texto, modelo };
+
+        registrarErro(`${modelo} respondeu sem texto (pode ter bloqueado o conteúdo)`);
+        inutilizados.add(modelo);
         continue;
       }
 
-      lastError = `${model} respondeu ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`;
-      if (res.status !== 503) unusable.add(model);
+      registrarErro(`${modelo} respondeu ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+      if (res.status !== 503) inutilizados.add(modelo);
     }
 
-    if (unusable.size === MODELS.length) break;
-    if (round < ROUNDS) await sleep(Math.min(2000 * round, Math.max(0, timeLeft())));
+    if (inutilizados.size === modelos.length) return null;
+    if (rodada < rodadas) await sleep(Math.min(2000 * rodada, Math.max(0, timeLeft())));
   }
 
-  throw new Error(`Gemini falhou. Último erro — ${lastError}`);
+  return null;
+}
+
+export async function callGemini(body: Record<string, unknown>): Promise<RespostaIA> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY não configurada");
+  }
+
+  const startedAt = Date.now();
+  const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
+
+  let ultimoErro = "erro desconhecido";
+  const registrarErro = (erro: string) => {
+    ultimoErro = erro;
+  };
+
+  // Pro sem cota responde 429 na hora (uns 300ms), então tentar sai
+  // barato mesmo quando não está disponível — uma rodada só basta.
+  const comPro = await tentarModelos(PRO_MODELS, body, apiKey, timeLeft, 1, registrarErro);
+  if (comPro) return { ...comPro, pro: true };
+
+  const comGratis = await tentarModelos(GRATIS_MODELS, body, apiKey, timeLeft, ROUNDS, registrarErro);
+  if (comGratis) return { ...comGratis, pro: false };
+
+  throw new Error(`Gemini falhou. Último erro — ${ultimoErro}`);
 }
