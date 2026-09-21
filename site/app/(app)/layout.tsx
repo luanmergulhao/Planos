@@ -11,7 +11,7 @@ const NAV_LINKS = [
   { href: "/", label: "Painel" },
   { href: "/planos", label: "Planos" },
   { href: "/editais", label: "Triagem" },
-  { href: "/prompts", label: "Prompts" },
+  { href: "/manual", label: "Manual" },
   { href: "/horas", label: "Horas" },
   { href: "/notificacoes", label: "Notificações" },
 ];

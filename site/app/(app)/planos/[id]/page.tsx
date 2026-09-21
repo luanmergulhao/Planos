@@ -73,7 +73,7 @@ export default async function PlanoPage({
   const { data: shares } = isOwner
     ? await supabase
         .from("plano_shares")
-        .select("id, permission, profiles(id, full_name, email)")
+        .select("id, permission, profiles!plano_shares_user_id_fkey(id, full_name, email)")
         .eq("plano_id", id)
     : { data: null };
 

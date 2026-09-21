@@ -36,6 +36,7 @@ export type Database = {
           email: string;
           avatar_url: string | null;
           role: ProfileRole;
+          pode_ver_segredos: boolean;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & { id: string; email: string };
@@ -216,6 +217,69 @@ export type Database = {
             columns: ["updated_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      planilhas_linhas: {
+        Row: {
+          planilha: "inscritos" | "triagem";
+          aba: string;
+          linha: number;
+          dados: Record<string, string>;
+          sincronizado_em: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["planilhas_linhas"]["Row"]> & {
+          planilha: "inscritos" | "triagem";
+          aba: string;
+          linha: number;
+          dados: Record<string, string>;
+        };
+        Update: Partial<Database["public"]["Tables"]["planilhas_linhas"]["Row"]>;
+        Relationships: [];
+      };
+      planilhas_sync: {
+        Row: {
+          planilha: "inscritos" | "triagem";
+          ultima_sync: string;
+          abas: Record<string, unknown>;
+        };
+        Insert: Partial<Database["public"]["Tables"]["planilhas_sync"]["Row"]> & { planilha: "inscritos" | "triagem" };
+        Update: Partial<Database["public"]["Tables"]["planilhas_sync"]["Row"]>;
+        Relationships: [];
+      };
+      manual_secoes: {
+        Row: {
+          id: string;
+          ordem: number;
+          grupo: string | null;
+          titulo: string;
+          html: string;
+          em_revisao: boolean;
+          atualizado_em: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["manual_secoes"]["Row"]> & {
+          ordem: number;
+          titulo: string;
+          html: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["manual_secoes"]["Row"]>;
+        Relationships: [];
+      };
+      manual_segredos: {
+        Row: {
+          id: number;
+          secao_id: string;
+          valor: string;
+        };
+        Insert: Database["public"]["Tables"]["manual_segredos"]["Row"];
+        Update: Partial<Database["public"]["Tables"]["manual_segredos"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "manual_segredos_secao_id_fkey";
+            columns: ["secao_id"];
+            isOneToOne: false;
+            referencedRelation: "manual_secoes";
             referencedColumns: ["id"];
           },
         ];

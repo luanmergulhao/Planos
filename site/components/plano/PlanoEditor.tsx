@@ -7,10 +7,11 @@ import { CategorySection } from "@/components/plano/CategorySection";
 import { ShareDialog } from "@/components/plano/ShareDialog";
 import { CommentSheet } from "@/components/comments/CommentSheet";
 import { DayBar } from "@/components/plano/DayBar";
+import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { formatDayLabel, shiftDay } from "@/lib/planos/day";
+import { shiftDay } from "@/lib/planos/day";
+import { cn } from "@/lib/utils";
 import type { CategoryRow, ItemRow, PlanoDayRow, PlanoRow, ShareEntry, TeamProfile } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
 import type { TriagensLinhaE } from "@/lib/planos/triagens";
@@ -23,6 +24,15 @@ function timeAgo(iso: string) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `há ${hours}h`;
   return `há ${Math.floor(hours / 24)}d`;
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+// "2026-09-21" -> "21/09/2026", como aparece na linha ALINHAMENTO INICIAL
+function formatDayNumeric(day: string) {
+  return day.split("-").reverse().join("/");
 }
 
 export function PlanoEditor({
@@ -132,6 +142,19 @@ export function PlanoEditor({
     if (data) setPlanoDay(data);
   }
 
+  // desfaz um "Finalizar o dia" clicado sem querer: a linha volta a ser
+  // ALINHAMENTO INICIAL
+  async function handleReopenDay() {
+    const { data } = await supabase
+      .from("plano_days")
+      .update({ alinhamento_final_at: null })
+      .eq("plano_id", plano.id)
+      .eq("day", day)
+      .select("*")
+      .single();
+    if (data) setPlanoDay(data);
+  }
+
   async function ensureDayMarkedStarted() {
     if (planoDay) return;
     const { data } = await supabase
@@ -179,6 +202,9 @@ export function PlanoEditor({
     await supabase.rpc("set_item_riscado", { item_id: itemId, new_riscado: riscado });
   }
 
+  const iniciado = !!planoDay?.alinhamento_inicial_at;
+  const finalizado = !!planoDay?.alinhamento_final_at;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -202,32 +228,52 @@ export function PlanoEditor({
 
       <DayBar
         day={day}
-        planoDay={planoDay}
-        canEdit={canEdit}
         onPrev={() => goToDay(shiftDay(day, -1))}
         onNext={() => goToDay(shiftDay(day, 1))}
         onPickDay={goToDay}
-        onEndDay={handleEndDay}
       />
 
-      {items.length === 0 && !planoDay && (
-        <Card>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <p className="text-sm text-muted-foreground">
-              {previousDayWithItems
-                ? `Esse dia ainda não foi iniciado. Copiar o Plano de ${formatDayLabel(previousDayWithItems)}?`
-                : "Esse dia ainda não foi iniciado."}
-            </p>
-            {canEdit && (
+      {/* Uma tabela só, como o documento do Google. A primeira linha é o
+          alinhamento do dia e troca de nome: ALINHAMENTO INICIAL depois de
+          iniciar, ALINHAMENTO FINAL depois de finalizar. */}
+      <div className="overflow-hidden rounded-md border text-sm">
+        <div className={LINHA}>
+          <div className={cn(CELULA, iniciado ? ROTULO : "font-bold text-muted-foreground")}>
+            {finalizado ? "ALINHAMENTO FINAL" : iniciado ? "ALINHAMENTO INICIAL" : "DIA NÃO INICIADO"}
+          </div>
+          <div className={CELULA}>
+            {formatDayNumeric(day)}
+            {!iniciado && canEdit && previousDayWithItems && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ao iniciar, copia o Plano de {formatDayNumeric(previousDayWithItems)} sem o que foi riscado.
+              </p>
+            )}
+          </div>
+          <div className={cn(CELULA, "flex flex-wrap items-center gap-2 text-xs text-muted-foreground")}>
+            {!iniciado && canEdit && (
               <Button size="sm" onClick={handleStartDay} disabled={startingDay}>
-                {startingDay ? "Copiando..." : previousDayWithItems ? "Começar o dia (copiar)" : "Começar o dia"}
+                {startingDay ? "Copiando..." : "Iniciar o dia"}
               </Button>
             )}
-          </CardContent>
-        </Card>
-      )}
+            {iniciado && planoDay?.alinhamento_inicial_at && (
+              <span>iniciado às {formatTime(planoDay.alinhamento_inicial_at)}</span>
+            )}
+            {finalizado && planoDay?.alinhamento_final_at && (
+              <span>· finalizado às {formatTime(planoDay.alinhamento_final_at)}</span>
+            )}
+            {iniciado && !finalizado && canEdit && (
+              <Button variant="outline" size="sm" onClick={handleEndDay}>
+                Finalizar o dia
+              </Button>
+            )}
+            {finalizado && canEdit && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReopenDay}>
+                Desfazer
+              </Button>
+            )}
+          </div>
+        </div>
 
-      <div className="flex flex-col gap-4">
         {categories.map((category) => (
           <CategorySection
             key={category.id}

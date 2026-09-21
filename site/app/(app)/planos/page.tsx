@@ -24,7 +24,8 @@ export default async function PlanosPage() {
 
   const { data: shared } = await supabase
     .from("plano_shares")
-    .select("permission, planos(id, title, updated_at, profiles(full_name, email))")
+    // planos tem dois caminhos até profiles (owner_id e updated_by): o dono é o que interessa
+    .select("permission, planos(id, title, updated_at, profiles!planos_owner_id_fkey(full_name, email))")
     .eq("user_id", user.id);
 
   return (

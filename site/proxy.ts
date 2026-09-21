@@ -4,7 +4,9 @@ import { type NextRequest, NextResponse } from "next/server";
 // /api/cron é chamado pela Vercel sem sessão de usuário — cada rota de
 // cron confere o CRON_SECRET por conta própria. Sem essa exceção o proxy
 // redirecionava pro login e as rotinas automáticas nunca executavam.
-const PUBLIC_PATHS = ["/login", "/auth", "/api/cron"];
+// /api/sync é chamado pelo script das planilhas do Drive e confere o
+// SYNC_SECRET por conta própria.
+const PUBLIC_PATHS = ["/login", "/auth", "/api/cron", "/api/sync"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -128,3 +128,19 @@
     @apply font-sans;
   }
 }
+/* Manual da equipe (HTML importado do .docx) */
+.manual-conteudo { font-size: 0.95rem; line-height: 1.65; }
+.manual-conteudo p { margin: 0 0 0.65rem; }
+.manual-conteudo h2 { font-size: 1.25rem; font-weight: 700; margin: 1.6rem 0 0.6rem; }
+.manual-conteudo h3 { font-size: 1.1rem; font-weight: 700; margin: 1.3rem 0 0.5rem; }
+.manual-conteudo h4, .manual-conteudo h5 { font-size: 1rem; font-weight: 700; margin: 1.1rem 0 0.4rem; }
+.manual-conteudo a { color: #1d4ed8; text-decoration: underline; text-underline-offset: 2px; }
+.dark .manual-conteudo a { color: #93c5fd; }
+.manual-conteudo table { border-collapse: collapse; margin: 0.75rem 0; max-width: 100%; }
+.manual-conteudo td, .manual-conteudo th { border: 1px solid var(--border); padding: 4px 8px; vertical-align: top; }
+.manual-conteudo .nivel-1 { margin-left: 1.5rem; }
+.manual-conteudo .nivel-2 { margin-left: 3rem; }
+.manual-conteudo .nivel-3 { margin-left: 4.5rem; }
+.manual-conteudo .nivel-4 { margin-left: 6rem; }
+.manual-conteudo .manual-imagem { color: var(--muted-foreground); font-size: 0.85rem; }
+.manual-conteudo .manual-senha { background: transparent; color: inherit; font-weight: 600; border-bottom: 1px dashed currentColor; }

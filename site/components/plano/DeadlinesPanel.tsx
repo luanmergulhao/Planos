@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, CalendarClock, ExternalLink, Search } from "lucide-react";
+import { AlertTriangle, ExternalLink, Search } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -54,25 +54,37 @@ function ResultadoRevisao({ revisao, titulo }: { revisao: RevisaoResumo; titulo:
   if (revisao.status === "mantido") {
     return (
       <span className="text-xs text-muted-foreground" title={revisao.evidencia ?? undefined}>
-        prazo confirmado · revisado {revisadoEm}
+        Revisão: {revisadoEm}
       </span>
     );
   }
 
   return (
     <span className="text-xs text-muted-foreground" title={revisao.evidencia ?? undefined}>
-      não confirmado · revisado {revisadoEm}
+      não confirmado · revisão {revisadoEm}
     </span>
   );
 }
 
-function Cabecalho({ entrada, revisao }: { entrada: DeadlineEntry; revisao: RevisaoResumo | undefined }) {
+// O título do evento já costuma trazer a data ("... 2026 30/09"); só
+// acrescenta o dia quando não traz, pra linha sempre dizer a data.
+const TEM_DATA = /\d{1,2}\/\d{1,2}/;
+
+function Cabecalho({
+  entrada,
+  revisao,
+  extra,
+}: {
+  entrada: DeadlineEntry;
+  revisao: RevisaoResumo | undefined;
+  extra?: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
-      <Badge variant="outline" className="shrink-0 tabular-nums">
-        {diaCurto(entrada.dia)}
-      </Badge>
-      <span>{entrada.titulo}</span>
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+      <span>
+        {entrada.titulo}
+        {TEM_DATA.test(entrada.titulo) ? "" : ` ${diaCurto(entrada.dia)}`}
+      </span>
       {entrada.divergencia && (
         <Badge variant="destructive" className="gap-1">
           <AlertTriangle className="size-3" />
@@ -80,6 +92,7 @@ function Cabecalho({ entrada, revisao }: { entrada: DeadlineEntry; revisao: Revi
         </Badge>
       )}
       {revisao && <ResultadoRevisao revisao={revisao} titulo={entrada.titulo} />}
+      {extra}
     </div>
   );
 }
@@ -102,6 +115,7 @@ function LinhaComConferencia({
   const [linkSalvo, setLinkSalvo] = useState(linkInicial);
   const [revisao, setRevisao] = useState(revisaoInicial);
   const [conferindo, setConferindo] = useState(false);
+  const [aberto, setAberto] = useState(false);
 
   async function salvarLink() {
     const novo = link.trim();
@@ -169,29 +183,45 @@ function LinhaComConferencia({
   const semLink = linkSalvo.trim() === "";
 
   return (
-    <li className="flex flex-col gap-1.5 rounded-md border bg-background p-2">
-      <Cabecalho entrada={entrada} revisao={revisao} />
+    <li className="flex flex-col gap-1">
+      <Cabecalho
+        entrada={entrada}
+        revisao={revisao}
+        extra={
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-6 text-muted-foreground"
+            title="Conferir se o prazo foi prorrogado"
+            onClick={() => setAberto((v) => !v)}
+          >
+            <Search className={conferindo ? "size-3.5 animate-pulse" : "size-3.5"} />
+          </Button>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={link}
-          placeholder="Link do edital (obrigatório pra conferir)"
-          className="h-8 max-w-md flex-1 text-xs"
-          aria-invalid={semLink}
-          onChange={(e) => setLink(e.target.value)}
-          onBlur={salvarLink}
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={semLink || conferindo}
-          title={semLink ? "Cole o link do edital primeiro" : "Conferir se o prazo foi prorrogado"}
-          onClick={conferir}
-        >
-          <Search className={conferindo ? "size-4 animate-pulse" : "size-4"} />
-          {conferindo ? "Conferindo..." : "Conferir prorrogação"}
-        </Button>
-      </div>
+      {aberto && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={link}
+            placeholder="Link do edital (obrigatório pra conferir)"
+            className="h-7 max-w-md flex-1 text-xs"
+            aria-invalid={semLink}
+            onChange={(e) => setLink(e.target.value)}
+            onBlur={salvarLink}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7"
+            disabled={semLink || conferindo}
+            title={semLink ? "Cole o link do edital primeiro" : "Conferir se o prazo foi prorrogado"}
+            onClick={conferir}
+          >
+            {conferindo ? "Conferindo..." : "Conferir prorrogação"}
+          </Button>
+        </div>
+      )}
     </li>
   );
 }
@@ -212,16 +242,15 @@ function Bloco({
   comConferencia: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h3 className="text-sm font-semibold">{titulo}</h3>
-        <span className="text-xs text-muted-foreground">{periodo}</span>
-      </div>
+    <div className="flex flex-col gap-1">
+      <h3 className="text-sm" title={periodo}>
+        {titulo}
+      </h3>
 
       {entradas.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nenhum deadline nesse período.</p>
       ) : (
-        <ul className={comConferencia ? "flex flex-col gap-2" : "flex flex-col gap-1"}>
+        <ul className="flex flex-col gap-1">
           {entradas.map((e) =>
             comConferencia ? (
               <LinhaComConferencia
@@ -247,14 +276,9 @@ export function DeadlinesPanel({ deadlines }: { deadlines: DeadlinesComRevisao }
   const temDivergencia = [...semana, ...proximaSemana].some((e) => e.divergencia);
 
   return (
-    <div className="flex flex-col gap-4 rounded-md border bg-muted/30 p-3">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <CalendarClock className="size-3.5" />
-        Puxado da agenda do Google — só eventos que começam com D ou DP
-      </div>
-
+    <div className="flex flex-col gap-3">
       <Bloco
-        titulo="Deadlines desta semana"
+        titulo="DEADLINES DESTA SEMANA"
         periodo={`${diaCurto(inicioSemana)} a ${diaCurto(fimSemana)}`}
         entradas={semana}
         revisoes={revisoes}
@@ -262,7 +286,7 @@ export function DeadlinesPanel({ deadlines }: { deadlines: DeadlinesComRevisao }
         comConferencia
       />
       <Bloco
-        titulo="Deadlines da próxima semana"
+        titulo="DEADLINES DA PROXIMA SEMANA"
         periodo={`${diaCurto(fimSemana)} a ${diaCurto(fimProximaSemana)}`}
         entradas={proximaSemana}
         revisoes={revisoes}

@@ -43,7 +43,9 @@ export function ShareDialog({
     const { data, error } = await supabase
       .from("plano_shares")
       .insert({ plano_id: planoId, user_id: selectedUserId, permission })
-      .select("id, permission, profiles(id, full_name, email)")
+      // plano_shares liga com profiles por dois caminhos (user_id e granted_by):
+      // sem dizer qual, o banco recusa a consulta
+      .select("id, permission, profiles!plano_shares_user_id_fkey(id, full_name, email)")
       .single();
     setLoading(false);
 
