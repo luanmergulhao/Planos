@@ -5,7 +5,12 @@ function diaCurto(dia: string) {
   return `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
 }
 
-// No Plano do Google cada triagem é uma linha "T nome do edital dd/mm".
+// O título do evento já costuma trazer a data ("... 2026 30/09"); só
+// acrescenta o dia quando não traz, pra linha sempre dizer a data.
+const TEM_DATA = /\d{1,2}\/\d{1,2}/;
+
+// No Plano do Google cada triagem é uma linha "T nome do edital dd/mm",
+// que é o próprio título do evento da agenda.
 function Bloco({ titulo, entradas }: { titulo: string; entradas: TriagemEntry[] }) {
   return (
     <div className="flex flex-col gap-1">
@@ -16,8 +21,9 @@ function Bloco({ titulo, entradas }: { titulo: string; entradas: TriagemEntry[] 
       ) : (
         <ul className="flex flex-col gap-1.5">
           {entradas.map((e) => (
-            <li key={e.id} className="text-sm" title={`triado em ${diaCurto(e.triadoEm)}`}>
-              T {e.titulo} {diaCurto(e.deadline)}
+            <li key={e.titulo + e.dia} className="text-sm">
+              {e.titulo}
+              {TEM_DATA.test(e.titulo) ? "" : ` ${diaCurto(e.dia)}`}
             </li>
           ))}
         </ul>

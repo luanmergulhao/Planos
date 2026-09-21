@@ -86,7 +86,7 @@ export default async function PlanoPage({
     getLinksSalvos(supabase, entradasLinhaA),
   ]);
   const deadlines = { ...deadlinesLinhaA, revisoes, links };
-  const triagens = await getTriagensLinhaE(supabase);
+  const triagens = await getTriagensLinhaE();
 
   const { data: ownerProfile } = await supabase
     .from("profiles")

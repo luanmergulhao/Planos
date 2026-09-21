@@ -92,14 +92,22 @@ function segundaDaSemana(dia: string): string {
   return shiftDay(dia, diaDaSemana === 0 ? -6 : 1 - diaDaSemana);
 }
 
-export async function getDeadlinesLinhaA(hoje = todaySaoPaulo()): Promise<DeadlinesLinhaA> {
+/**
+ * Janela da "semana" do Plano: começa na sexta anterior (deadline que caiu
+ * no fim de semana só é tratado na segunda seguinte) e vai até a segunda
+ * seguinte. Usada pelas linhas A (deadlines) e E (triagens).
+ */
+export function janelaDaSemana(hoje = todaySaoPaulo()) {
   const segunda = segundaDaSemana(hoje);
+  return {
+    inicioSemana: shiftDay(segunda, -3),
+    fimSemana: shiftDay(segunda, 7),
+    fimProximaSemana: shiftDay(segunda, 14),
+  };
+}
 
-  // A janela da semana começa na sexta anterior porque deadline que caiu
-  // no fim de semana só é tratado na segunda seguinte.
-  const inicioSemana = shiftDay(segunda, -3);
-  const fimSemana = shiftDay(segunda, 7);
-  const fimProximaSemana = shiftDay(segunda, 14);
+export async function getDeadlinesLinhaA(hoje = todaySaoPaulo()): Promise<DeadlinesLinhaA> {
+  const { inicioSemana, fimSemana, fimProximaSemana } = janelaDaSemana(hoje);
 
   const eventos = [...(await fetchCalendarEvents()), ...deadlinesDeTeste()];
   const semana = entradasDe(eventos, inicioSemana, fimSemana);
