@@ -221,6 +221,30 @@ export type Database = {
           },
         ];
       };
+      plano_abas: {
+        Row: {
+          id: string;
+          plano_id: string;
+          titulo: string;
+          conteudo: string;
+          sort_order: number;
+          created_by: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["plano_abas"]["Row"]> & { plano_id: string };
+        Update: Partial<Database["public"]["Tables"]["plano_abas"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "plano_abas_plano_id_fkey";
+            columns: ["plano_id"];
+            isOneToOne: false;
+            referencedRelation: "planos";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       planilhas_linhas: {
         Row: {
           planilha: "inscritos" | "triagem";

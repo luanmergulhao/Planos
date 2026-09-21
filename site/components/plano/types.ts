@@ -4,6 +4,7 @@ export type PlanoRow = Database["public"]["Tables"]["planos"]["Row"];
 export type CategoryRow = Database["public"]["Tables"]["plano_categories"]["Row"];
 export type ItemRow = Database["public"]["Tables"]["plano_items"]["Row"];
 export type PlanoDayRow = Database["public"]["Tables"]["plano_days"]["Row"];
+export type PlanoAbaRow = Database["public"]["Tables"]["plano_abas"]["Row"];
 
 export type TeamProfile = { id: string; full_name: string | null; email: string };
 
