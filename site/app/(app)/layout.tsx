@@ -31,9 +31,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Toaster />
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link href="/planos" className="font-semibold">
-            Planos
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link href="/planos" className="font-semibold">
+              Planos
+            </Link>
+            <Link href="/prompts" className="text-sm text-muted-foreground hover:text-foreground">
+              Prompts
+            </Link>
+          </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <NotificationBell initialCount={unreadCount ?? 0} />
