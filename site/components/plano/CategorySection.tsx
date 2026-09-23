@@ -4,14 +4,12 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlanoItemRow } from "@/components/plano/PlanoItemRow";
 import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
-import { TriagemPanel } from "@/components/plano/TriagemPanel";
 import { LinkedText } from "@/components/plano/EditableCell";
 import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { CATEGORY_META, categoryLabel } from "@/lib/planos/categories";
 import { cn } from "@/lib/utils";
 import type { CategoryRow, ItemRow } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
-import type { TriagensLinhaE } from "@/lib/planos/triagens";
 
 // Linhas fixas de instrução que pedem "DATAR/ DEADLINE" saem em vermelho
 // no original, junto com a marca MANUAL/PROMPT.
@@ -23,7 +21,6 @@ export function CategorySection({
   canEdit,
   isManager,
   deadlines,
-  triagens,
   onAddItem,
   onUpdateItem,
   onDeleteItem,
@@ -35,7 +32,6 @@ export function CategorySection({
   canEdit: boolean;
   isManager: boolean;
   deadlines: DeadlinesComRevisao | null;
-  triagens: TriagensLinhaE | null;
   onAddItem: () => void;
   onUpdateItem: (itemId: string, patch: Partial<ItemRow>) => void;
   onDeleteItem: (itemId: string) => void;
@@ -51,7 +47,6 @@ export function CategorySection({
 
         <div className={CELULA}>
           {deadlines && <DeadlinesPanel deadlines={deadlines} />}
-          {triagens && <TriagemPanel triagens={triagens} />}
           {canEdit && (
             <Button variant="ghost" size="sm" className="-ml-1 mt-1 h-7 text-xs text-muted-foreground" onClick={onAddItem}>
               <Plus className="size-3.5" />

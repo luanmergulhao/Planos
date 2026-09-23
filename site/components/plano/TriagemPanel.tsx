@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { TriagemEntry, TriagensLinhaE } from "@/lib/planos/triagens";
+import { AdicionarTriagemForm } from "@/components/plano/AdicionarTriagemForm";
 
 function diaCurto(dia: string) {
   return `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
@@ -37,6 +38,8 @@ export function TriagemPanel({ triagens }: { triagens: TriagensLinhaE }) {
     <div className="flex flex-col gap-3">
       <Bloco titulo="D NESTA SEMANA:" entradas={triagens.semana} />
       <Bloco titulo="D do MÊS:" entradas={triagens.mes} />
+
+      <AdicionarTriagemForm />
 
       <Link href="/editais" className="text-xs text-muted-foreground underline">
         Ver a planilha de triagem completa

@@ -85,6 +85,8 @@ const COLUNAS: Coluna[] = [
   colunaResposta("carta_convite", "EXPO: precisa de carta-convite?"),
   colunaResposta("plano_expositivo", "EXPO: precisa de plano expositivo?"),
   colunaResposta("exposicao_online", "Dá pra apresentar online?"),
+  colunaResposta("guia", "GUIA (ficha de abertura)", "min-w-72"),
+  colunaResposta("tp", "TP (triagem profunda)", "min-w-72"),
 ];
 
 function Celula({

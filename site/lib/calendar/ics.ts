@@ -83,7 +83,9 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
     urls.map(async (url) => {
       // O Google atualiza o iCal a cada algumas horas, então cachear 1h
       // não atrasa nada e evita baixar as agendas a cada carregamento.
-      const res = await fetch(url, { next: { revalidate: 3600 } });
+      // Tag "calendar": lib/calendar/write.ts invalida na hora quando o
+      // site cria um evento novo, pra não esperar a hora toda.
+      const res = await fetch(url, { next: { revalidate: 3600, tags: ["calendar"] } });
       if (!res.ok) return [];
       return parseIcs(await res.text());
     })

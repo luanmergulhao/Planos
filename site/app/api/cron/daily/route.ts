@@ -4,6 +4,7 @@ import { computeDigest } from "@/lib/digest";
 import { computeEditaisDigest, ACTIVE_FASES } from "@/lib/editais";
 import { searchResultados } from "@/lib/ai/resultados";
 import type { ResultadoFinding } from "@/lib/ai/resultados-tipos";
+import { runGuiaTp } from "@/lib/ai/guia-tp";
 import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
 import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
 import { resumirEmailsNoPlano } from "@/lib/planos/emails-cb";
@@ -225,6 +226,49 @@ async function searchAndNotifyResultados(admin: ReturnType<typeof createAdminCli
   return notified;
 }
 
+// GUIA e TP (2ª e 3ª etapa da abertura de um edital, ver lib/ai/guia-tp.ts).
+// Cada um é uma conversa inteira com a IA (Triagem + GUIA + TP), então só
+// processa 1 edital por dia — o mais antigo ainda sem GUIA — pra não
+// estourar os 60s de limite da rota. Com vários pendentes, vai um por dia.
+async function runGuiaTpDiario(admin: ReturnType<typeof createAdminClient>) {
+  const { data: candidatos } = await admin
+    .from("editais")
+    .select("id, titulo, link, respostas")
+    .eq("fase", "T")
+    .not("link", "is", null)
+    .order("created_at", { ascending: true });
+
+  const edital = (candidatos ?? []).find((e) => {
+    const respostas = e.respostas as Record<string, unknown> | null;
+    return !respostas?.guia;
+  });
+  if (!edital) return 0;
+
+  try {
+    const { guia, tp } = await runGuiaTp({ link: edital.link, respostas: edital.respostas });
+
+    await admin
+      .from("editais")
+      .update({ respostas: { ...(edital.respostas as object), guia, tp } })
+      .eq("id", edital.id);
+
+    const { data: teamProfiles } = await admin.from("profiles").select("id");
+    await admin.from("notifications").insert(
+      (teamProfiles ?? []).map((profile) => ({
+        user_id: profile.id,
+        type: "guia_tp_pronto" as const,
+        title: `GUIA e TP prontos: ${edital.titulo}`,
+        body: "A IA preencheu a ficha de abertura e a triagem profunda — confira na Triagem.",
+        link_path: `/editais?item=${edital.id}`,
+      }))
+    );
+    return 1;
+  } catch {
+    // best-effort, igual à busca de resultados — não derruba o resto do cron
+    return 0;
+  }
+}
+
 // Toda segunda-feira: varre a agenda do Google e avisa o time quais
 // deadlines (D/DP) vencem nessa semana e na próxima. É a mesma lista que
 // o painel da linha A mostra ao vivo — a diferença é que aqui ela vai
@@ -316,6 +360,7 @@ export async function GET(request: Request) {
     resultadosEncontrados,
     deadlinesDaSemanaNotified,
     emailsAdicionados,
+    guiaTpProcessados,
   ] = await Promise.all([
     scanPlanoDeadlines(admin),
     scanEditalDeadlines(admin),
@@ -324,6 +369,7 @@ export async function GET(request: Request) {
     searchAndNotifyResultados(admin),
     notifyDeadlinesDaSemana(admin),
     resumirEmails(admin),
+    runGuiaTpDiario(admin),
   ]);
 
   return NextResponse.json({
@@ -335,5 +381,6 @@ export async function GET(request: Request) {
     resultadosEncontrados,
     deadlinesDaSemanaNotified,
     emailsAdicionados,
+    guiaTpProcessados,
   });
 }

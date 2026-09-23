@@ -1,12 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inappChannel } from "@/lib/notifications/channels/inapp";
 import { emailChannel } from "@/lib/notifications/channels/email";
+import { whatsappChannel } from "@/lib/notifications/channels/whatsapp";
 import type { NotificationChannel } from "@/lib/notifications/types";
 
-// Registro de canais ativos. Adicionar WhatsApp na fase 2 é: escrever
-// lib/notifications/channels/whatsapp.ts e incluir aqui — nada nesta
-// função nem no gatilho do banco (handle_new_comment) muda.
-const CHANNELS: NotificationChannel[] = [inappChannel, emailChannel];
+const CHANNELS: NotificationChannel[] = [inappChannel, emailChannel, whatsappChannel];
 
 // Chamado pelo webhook do Supabase (POST /api/notify/dispatch) sempre
 // que uma linha nova entra em `notifications`. Usa a service role
@@ -41,6 +39,7 @@ export async function dispatchNotification(notificationId: string) {
     const result = await channel.send({
       userEmail: profile.email,
       userName: profile.full_name,
+      userPhone: prefs?.phone_number ?? null,
       title: notification.title,
       body: notification.body,
       linkPath: notification.link_path,

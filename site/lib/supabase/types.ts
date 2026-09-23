@@ -24,7 +24,9 @@ export type NotificationType =
   | "deadline_reminder"
   | "daily_digest"
   | "share_granted"
-  | "resultado_encontrado";
+  | "resultado_encontrado"
+  | "alinhamento_final"
+  | "guia_tp_pronto";
 
 export type Database = {
   public: {

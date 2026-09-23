@@ -2,22 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { CategorySection } from "@/components/plano/CategorySection";
 import { ShareDialog } from "@/components/plano/ShareDialog";
 import { CommentSheet } from "@/components/comments/CommentSheet";
-import { AbaNotas } from "@/components/plano/AbaNotas";
-import { BarraDeAbas } from "@/components/plano/BarraDeAbas";
 import { DayBar } from "@/components/plano/DayBar";
 import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { shiftDay } from "@/lib/planos/day";
 import { cn } from "@/lib/utils";
-import type { CategoryRow, ItemRow, PlanoAbaRow, PlanoDayRow, PlanoRow, ShareEntry, TeamProfile } from "@/components/plano/types";
+import type { CategoryRow, ItemRow, PlanoDayRow, PlanoRow, ShareEntry, TeamProfile } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
-import type { TriagensLinhaE } from "@/lib/planos/triagens";
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -46,9 +42,6 @@ export function PlanoEditor({
   planoDay: initialPlanoDay,
   previousDayWithItems,
   deadlines,
-  triagens,
-  abas: abasIniciais,
-  abaInicial,
   shares,
   teamProfiles,
   currentUserId,
@@ -65,9 +58,6 @@ export function PlanoEditor({
   planoDay: PlanoDayRow | null;
   previousDayWithItems: string | null;
   deadlines: DeadlinesComRevisao;
-  triagens: TriagensLinhaE;
-  abas: PlanoAbaRow[];
-  abaInicial: string | null;
   shares: ShareEntry[];
   teamProfiles: TeamProfile[];
   currentUserId: string;
@@ -79,11 +69,6 @@ export function PlanoEditor({
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
-  const [abas, setAbas] = useState(abasIniciais);
-  const [abaAtiva, setAbaAtiva] = useState<string | null>(
-    abaInicial && abasIniciais.some((a) => a.id === abaInicial) ? abaInicial : null
-  );
-  const [criandoAba, setCriandoAba] = useState(false);
   const [planoDay, setPlanoDay] = useState(initialPlanoDay);
   const [startingDay, setStartingDay] = useState(false);
   const [activeCommentItemId, setActiveCommentItemId] = useState<string | null>(null);
@@ -102,39 +87,6 @@ export function PlanoEditor({
 
   function goToDay(newDay: string) {
     router.push(`/planos/${plano.id}?dia=${newDay}`);
-  }
-
-  // a aba aberta fica no endereço (?aba=...), sem recarregar a página
-  function selecionarAba(id: string | null) {
-    setAbaAtiva(id);
-    const url = new URL(window.location.href);
-    if (id) url.searchParams.set("aba", id);
-    else url.searchParams.delete("aba");
-    window.history.replaceState(null, "", url);
-  }
-
-  async function handleCriarAba() {
-    setCriandoAba(true);
-    const proximaOrdem = abas.reduce((maior, a) => Math.max(maior, a.sort_order), 0) + 1;
-    const { data, error } = await supabase
-      .from("plano_abas")
-      .insert({
-        plano_id: plano.id,
-        titulo: "Nova aba",
-        sort_order: proximaOrdem,
-        created_by: currentUserId,
-        updated_by: currentUserId,
-      })
-      .select("*")
-      .single();
-    setCriandoAba(false);
-
-    if (error || !data) {
-      toast.error("Não criou a aba: " + (error?.message ?? "erro desconhecido"));
-      return;
-    }
-    setAbas((prev) => [...prev, data]);
-    selecionarAba(data.id);
   }
 
   async function handleStartDay() {
@@ -271,97 +223,70 @@ export function PlanoEditor({
         )}
       </div>
 
-      <BarraDeAbas
-        abas={abas}
-        ativa={abaAtiva}
-        canEdit={canEdit}
-        criando={criandoAba}
-        onSelecionar={selecionarAba}
-        onCriar={handleCriarAba}
+      <DayBar
+        day={day}
+        onPrev={() => goToDay(shiftDay(day, -1))}
+        onNext={() => goToDay(shiftDay(day, 1))}
+        onPickDay={goToDay}
       />
 
-      {abaAtiva === null || !abas.find((a) => a.id === abaAtiva) ? (
-        <>
-          <DayBar
-            day={day}
-            onPrev={() => goToDay(shiftDay(day, -1))}
-            onNext={() => goToDay(shiftDay(day, 1))}
-            onPickDay={goToDay}
-          />
-
-          {/* Uma tabela só, como o documento do Google. A primeira linha é o
-              alinhamento do dia e troca de nome: ALINHAMENTO INICIAL depois de
-              iniciar, ALINHAMENTO FINAL depois de finalizar. */}
-          <div className="overflow-hidden rounded-md border text-sm">
-            <div className={LINHA}>
-              <div className={cn(CELULA, iniciado ? ROTULO : "font-bold text-muted-foreground")}>
-                {finalizado ? "ALINHAMENTO FINAL" : iniciado ? "ALINHAMENTO INICIAL" : "DIA NÃO INICIADO"}
-              </div>
-              <div className={CELULA}>
-                {formatDayNumeric(day)}
-                {!iniciado && canEdit && previousDayWithItems && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Ao iniciar, copia o Plano de {formatDayNumeric(previousDayWithItems)} sem o que foi riscado.
-                  </p>
-                )}
-              </div>
-              <div className={cn(CELULA, "flex flex-wrap items-center gap-2 text-xs text-muted-foreground")}>
-                {!iniciado && canEdit && (
-                  <Button size="sm" onClick={handleStartDay} disabled={startingDay}>
-                    {startingDay ? "Copiando..." : "Iniciar o dia"}
-                  </Button>
-                )}
-                {iniciado && planoDay?.alinhamento_inicial_at && (
-                  <span>iniciado às {formatTime(planoDay.alinhamento_inicial_at)}</span>
-                )}
-                {finalizado && planoDay?.alinhamento_final_at && (
-                  <span>· finalizado às {formatTime(planoDay.alinhamento_final_at)}</span>
-                )}
-                {iniciado && !finalizado && canEdit && (
-                  <Button variant="outline" size="sm" onClick={handleEndDay}>
-                    Finalizar o dia
-                  </Button>
-                )}
-                {finalizado && canEdit && (
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReopenDay}>
-                    Desfazer
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {categories.map((category) => (
-              <CategorySection
-                key={category.id}
-                category={category}
-                items={itemsByCategory.get(category.id) ?? []}
-                canEdit={canEdit}
-                isManager={isManager}
-                deadlines={category.code === "A" ? deadlines : null}
-                triagens={category.code === "E" ? triagens : null}
-                onAddItem={() => handleAddItem(category.id)}
-                onUpdateItem={handleUpdateItem}
-                onDeleteItem={handleDeleteItem}
-                onToggleRiscado={handleToggleRiscado}
-                onOpenComments={setActiveCommentItemId}
-              />
-            ))}
+      {/* Uma tabela só, como o documento do Google. A primeira linha é o
+          alinhamento do dia e troca de nome: ALINHAMENTO INICIAL depois de
+          iniciar, ALINHAMENTO FINAL depois de finalizar. */}
+      <div className="overflow-hidden rounded-md border text-sm">
+        <div className={LINHA}>
+          <div className={cn(CELULA, iniciado ? ROTULO : "font-bold text-muted-foreground")}>
+            {finalizado ? "ALINHAMENTO FINAL" : iniciado ? "ALINHAMENTO INICIAL" : "DIA NÃO INICIADO"}
           </div>
-        </>
-      ) : (
-        <AbaNotas
-          key={abaAtiva}
-          aba={abas.find((a) => a.id === abaAtiva)!}
-          canEdit={canEdit}
-          currentUserId={currentUserId}
-          teamProfiles={teamProfiles}
-          onSalva={(linha) => setAbas((prev) => prev.map((a) => (a.id === linha.id ? linha : a)))}
-          onExcluida={(id) => {
-            setAbas((prev) => prev.filter((a) => a.id !== id));
-            selecionarAba(null);
-          }}
-        />
-      )}
+          <div className={CELULA}>
+            {formatDayNumeric(day)}
+            {!iniciado && canEdit && previousDayWithItems && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ao iniciar, copia o Plano de {formatDayNumeric(previousDayWithItems)} sem o que foi riscado.
+              </p>
+            )}
+          </div>
+          <div className={cn(CELULA, "flex flex-wrap items-center gap-2 text-xs text-muted-foreground")}>
+            {!iniciado && canEdit && (
+              <Button size="sm" onClick={handleStartDay} disabled={startingDay}>
+                {startingDay ? "Copiando..." : "Iniciar o dia"}
+              </Button>
+            )}
+            {iniciado && planoDay?.alinhamento_inicial_at && (
+              <span>iniciado às {formatTime(planoDay.alinhamento_inicial_at)}</span>
+            )}
+            {finalizado && planoDay?.alinhamento_final_at && (
+              <span>· finalizado às {formatTime(planoDay.alinhamento_final_at)}</span>
+            )}
+            {iniciado && !finalizado && canEdit && (
+              <Button variant="outline" size="sm" onClick={handleEndDay}>
+                Finalizar o dia
+              </Button>
+            )}
+            {finalizado && canEdit && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReopenDay}>
+                Desfazer
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {categories.map((category) => (
+          <CategorySection
+            key={category.id}
+            category={category}
+            items={itemsByCategory.get(category.id) ?? []}
+            canEdit={canEdit}
+            isManager={isManager}
+            deadlines={category.code === "A" ? deadlines : null}
+            onAddItem={() => handleAddItem(category.id)}
+            onUpdateItem={handleUpdateItem}
+            onDeleteItem={handleDeleteItem}
+            onToggleRiscado={handleToggleRiscado}
+            onOpenComments={setActiveCommentItemId}
+          />
+        ))}
+      </div>
 
       {activeCommentItemId && (
         <CommentSheet

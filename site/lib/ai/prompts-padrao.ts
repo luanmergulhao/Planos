@@ -8,7 +8,7 @@
 // Dentro do texto, {{variavel}} é trocado pelo valor na hora de chamar a
 // IA. Os nomes disponíveis em cada prompt estão em `variaveis`.
 
-export type PromptId = "triagem" | "resultados" | "prorrogacao" | "resumo_email";
+export type PromptId = "triagem" | "resultados" | "prorrogacao" | "resumo_email" | "guia" | "tp";
 
 export type PromptPadrao = {
   id: PromptId;
@@ -96,6 +96,56 @@ Regras obrigatórias:
 E-mails:
 {{lista}}`;
 
+const GUIA = `Você já realizou uma primeira análise nesse edital que está nas fontes desse caderno. Agora preciso de novas informações, segundo a lista abaixo. Utilizar exclusivamente as referências das fontes.
+
+REGRAS OBRIGATÓRIAS DE RESPOSTA:
+1. Não inventar respostas. Todas as informações precisam ser obtidas apenas nas fontes fornecidas.
+2. IDIOMA: Se o edital estiver em outro idioma (ex: inglês, espanhol), mantenha os termos e citações na LÍNGUA NATIVA do documento.
+3. REGRA DO "SIM/NÃO": Para os campos indicados com (*), responda estritamente "Não" caso a resposta seja negativa ou não mencionada. Caso seja positiva, responda "Sim" e inclua APENAS o que é exigido/especificado.
+4. CITAÇÕES DENTRO DA RESPOSTA: Sempre que houver uma exigência explícita, inclua o trecho do texto entre parênteses para comprovação.
+5. Caso uma informação não exista, escreva "não encontrado". Não inventar a resposta.
+6. Indicar a fonte exata de onde cada informação foi obtida, de preferência a página do regulamento do edital ou do documento consultado (links, etc).
+
+### FICHA DE ABERTURA DE EDITAL
+* Data de abertura do edital / início das inscrições: [Data inicial de inscrições ou lançamento do edital]
+* Deadline - Prazo final de inscrições (Data, hora, fuso local + Horário BR): [Ex: August 9, 2026 às 23:59 EDT (EUA) | Horário do Brasil: 10/08/2026 às 00:59 BRT] — Sempre informe a data, hora e fuso local do país de origem + a conversão exata para o horário do Brasil (BRT). Caso o edital NÃO mencione o horário específico, adote sempre 23:59 no horário local do país de origem e calcule a conversão equivalente para o Brasil.
+* Link do edital: [Link principal/oficial]
+* É possível salvar o processo de inscrição? [Sim / Não - indicar se permite rascunho]
+* (*) Há modelo exigido para alguma TABELA (cronograma/orçamento)? [Se não: "Não" | Se sim: "Sim: (indicar apenas o modelo/tabela exigido)"]
+* (*) Exige documentos específicos/assinaturas na INSCRIÇÃO? [Se não: "Não" | Se sim: "Sim: (listar apenas os documentos/assinaturas exigidos)"]
+* (*) Pode enviar mais de uma proposta do mesmo proponente? Alguma restrição? [Se não permite ou não aplica: "Não" | Se sim: "Sim: (detalhar apenas a regra/limite)"]`;
+
+const TP = `Vamos aprofundar a análise desse edital. Responda a cada uma das perguntas abaixo, com base exclusivamente no material das fontes desse caderno.
+
+ESTRUTURA DA SUA RESPOSTA:
+- Indicar exatamente em qual página, item ou seção do documento/texto você encontrou cada informação, de preferência a página do regulamento do edital ou do documento consultado (Ex: "Data do Deadline: Encontrado na página 5, item 7.1").
+- Responder no mesmo idioma original do edital.
+- Caso uma informação não exista, escreva "não encontrado". Não inventar a resposta.
+
+a. PROPONÊNCIA: 1. Quem pode ser proponente (elegibility)? 2. Existe limite de projetos por proponente?
+b. LEI: é baseado em alguma lei de patrocínio? qual?
+   i. se sim, alguma regra exige que o texto da proposta seja exatamente o inscrito na lei?
+   ii. se sim, o projeto já precisa estar aprovado na lei?
+c. Tem valor máximo para aporte?
+d. CATEGORIAS: quais são as categorias e valor de prêmio de cada uma por projeto?
+e. CRONOGRAMA: prazo de execução do projeto — todas as recomendações sobre cronograma (prazo mínimo, data de início, data de resultados finais, data final). Alguma regra especial?
+f. LOCAL: locais de realização recomendados. Alguma regra especial?
+g. REMUNERAÇÃO: qual valor? há teto de aporte de patrocínio por categoria selecionada? Alguma regra especial?
+h. TEMÁTICA: tem alguma proposta específica?
+i. ORÇAMENTO: 1. Tem planilha orçamentária a ser apresentada? 2. O que não pode ser incluído ou financiado com esse apoio? 3. Algum percentual recomendado para uma determinada atividade ou fase (ex: % para atividades administrativas)? 4. Alguma outra regra especial sobre o orçamento?
+j. FICHA TÉCNICA: a equipe do projeto precisa residir e comprovar residência em alguma localidade específica?
+   i. Algum tópico que diz que convidado internacional não pode fazer parte da ficha técnica?
+   ii. Alguma menção a limite de número de rubricas pagas a uma mesma pessoa?
+k. MODELO DE DOCUMENTO: há algum documento com modelo específico?
+l. CARTAS ASSINADAS: alguma obrigatoriedade? Precisam ser assinadas via GOV.br?
+m. CONTRAPARTIDAS sociais: existe percentual mínimo ou atividade obrigatória?
+n. CONTRAPARTIDAS AO PATROCINADOR: alguma exigência ou recomendação especificada no regulamento?
+o. SUSTENTABILIDADE: alguma obrigatoriedade?
+p. ACESSIBILIDADE: quais recursos são obrigatórios?
+q. QUANTIDADES: o edital exige número mínimo de apresentações, sessões, exposições, circulação territorial ou ações presenciais? Qual a quantidade mínima obrigatória?
+r. ONLINE: o edital permite atividade online como parte principal do projeto, ou só como complemento?
+s. ANEXOS: existe alguma exigência específica quanto à documentação apresentada?`;
+
 export const PROMPTS_PADRAO: PromptPadrao[] = [
   {
     id: "triagem",
@@ -128,5 +178,21 @@ export const PROMPTS_PADRAO: PromptPadrao[] = [
       "Resume o que a CB pediu por e-mail e vira linha na coluna C do Plano. Roda sozinho uma vez por dia.",
     variaveis: ["lista"],
     conteudo: RESUMO_EMAIL,
+  },
+  {
+    id: "guia",
+    nome: "GUIA (ficha de abertura)",
+    descricao:
+      "Segunda etapa da abertura de um edital: preenche a ficha de abertura, continuando a conversa que começou com a Triagem. Roda sozinho todo dia, pros editais em Triagem que ainda não têm GUIA.",
+    variaveis: [],
+    conteudo: GUIA,
+  },
+  {
+    id: "tp",
+    nome: "TP (triagem profunda)",
+    descricao:
+      "Terceira etapa da abertura: aprofunda a análise do edital com as perguntas de proponência, lei, orçamento etc. Roda sozinho todo dia, depois do GUIA.",
+    variaveis: [],
+    conteudo: TP,
   },
 ];

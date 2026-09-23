@@ -3,6 +3,7 @@ export type NotificationChannelName = "inapp" | "email" | "whatsapp";
 export type ChannelPayload = {
   userEmail: string;
   userName: string | null;
+  userPhone: string | null;
   title: string;
   body: string | null;
   linkPath: string | null;

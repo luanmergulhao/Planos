@@ -4,17 +4,16 @@ import { PlanoEditor } from "@/components/plano/PlanoEditor";
 import { todaySaoPaulo } from "@/lib/planos/day";
 import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
 import { getLinksSalvos, getRevisoesRecentes } from "@/lib/planos/revisao-deadlines";
-import { getTriagensLinhaE } from "@/lib/planos/triagens";
 
 export default async function PlanoPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ dia?: string; aba?: string }>;
+  searchParams: Promise<{ dia?: string }>;
 }) {
   const { id } = await params;
-  const { dia, aba } = await searchParams;
+  const { dia } = await searchParams;
   const day = dia ?? todaySaoPaulo();
   const { supabase, user, profile } = await requireProfile();
 
@@ -47,9 +46,6 @@ export default async function PlanoPage({
     .eq("plano_id", id)
     .eq("day", day)
     .order("item_number");
-
-  // abas de notas do Plano; se a migração ainda não rodou a consulta falha e a página segue sem elas
-  const { data: abas } = await supabase.from("plano_abas").select("*").eq("plano_id", id).order("sort_order");
 
   const { data: planoDay } = await supabase
     .from("plano_days")
@@ -89,7 +85,6 @@ export default async function PlanoPage({
     getLinksSalvos(supabase, entradasLinhaA),
   ]);
   const deadlines = { ...deadlinesLinhaA, revisoes, links };
-  const triagens = await getTriagensLinhaE();
 
   const { data: ownerProfile } = await supabase
     .from("profiles")
@@ -110,9 +105,6 @@ export default async function PlanoPage({
       planoDay={planoDay ?? null}
       previousDayWithItems={previousDayWithItems}
       deadlines={deadlines}
-      triagens={triagens}
-      abas={abas ?? []}
-      abaInicial={aba ?? null}
       shares={
         (shares ?? []).map((s) => ({
           id: s.id,

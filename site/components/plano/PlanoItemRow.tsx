@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EditableCell } from "@/components/plano/EditableCell";
+import { DetalhesPopover } from "@/components/plano/DetalhesPopover";
 import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { itemCode } from "@/lib/planos/categories";
 import { getDeadlineUrgency, URGENCY_LABEL } from "@/lib/time/urgency";
@@ -117,11 +118,10 @@ export function PlanoItemRow({
         )}
       </div>
 
-      <div className={CELULA}>
-        <EditableCell
+      <div className={cn(CELULA, "flex items-start")}>
+        <DetalhesPopover
           value={content.links ?? ""}
           canEdit={canEdit}
-          placeholder="detalhes, links"
           riscado={item.riscado}
           onCommit={(links) => commitContent({ links })}
         />
