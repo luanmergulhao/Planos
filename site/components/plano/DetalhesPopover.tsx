@@ -34,7 +34,7 @@ export function DetalhesPopover({
             className="size-7"
             title={temConteudo ? "Ver detalhes" : "Adicionar detalhes"}
           >
-            <Info className={cn("size-4", temConteudo ? "text-foreground" : "text-muted-foreground/40")} />
+            <Info className={cn("size-4", temConteudo ? "text-foreground" : "text-muted-foreground")} />
           </Button>
         }
       />
