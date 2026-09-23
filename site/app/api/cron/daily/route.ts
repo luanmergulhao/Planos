@@ -147,9 +147,6 @@ async function sendDailyDigests(admin: ReturnType<typeof createAdminClient>) {
 
   for (const { user_id } of users ?? []) {
     const digest = await computeDigest(admin, user_id);
-    const total =
-      digest.overdue.length + digest.priority.length + editaisDigest.overdue.length + editaisDigest.week.length;
-    if (total === 0) continue;
 
     const parts = [
       digest.overdue.length > 0 ? `${digest.overdue.length} tarefa(s) atrasada(s)` : null,
@@ -158,12 +155,14 @@ async function sendDailyDigests(admin: ReturnType<typeof createAdminClient>) {
       editaisDigest.week.length > 0 ? `${editaisDigest.week.length} edital(is) vencendo essa semana` : null,
     ].filter(Boolean);
 
+    // Manda todo dia, mesmo sem nada pendente — silêncio não distingue
+    // "tá tudo bem" de "a automação parou de funcionar".
     await admin.from("notifications").insert({
       user_id,
       type: "daily_digest",
       title: "Resumo diário do Planos",
-      body: parts.join(", ") + ".",
-      link_path: "/",
+      body: parts.length > 0 ? parts.join(", ") + "." : "Tudo em dia, nada pendente.",
+      link_path: "/planos",
     });
     sent++;
   }

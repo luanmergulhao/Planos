@@ -7,12 +7,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Toaster } from "@/components/ui/sonner";
 
-const NAV_LINKS = [
-  { href: "/planos", label: "Planos" },
-  { href: "/manual", label: "Manual" },
-  { href: "/notificacoes", label: "Notificações" },
-];
-
 function initials(name: string | null, email: string) {
   const source = name?.trim() || email;
   return source
@@ -37,21 +31,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Toaster />
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-6">
-            <span className="font-semibold">Planos</span>
-            <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-              {NAV_LINKS.map((link) => (
-                <Link key={link.href} href={link.href} className="hover:text-foreground">
-                  {link.label}
-                </Link>
-              ))}
-              {profile.role === "manager" && (
-                <Link href="/admin/equipe" className="hover:text-foreground">
-                  Equipe
-                </Link>
-              )}
-            </nav>
-          </div>
+          <Link href="/planos" className="font-semibold">
+            Planos
+          </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <NotificationBell initialCount={unreadCount ?? 0} />
