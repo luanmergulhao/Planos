@@ -4,16 +4,12 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlanoItemRow } from "@/components/plano/PlanoItemRow";
 import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
-import { LinkedText } from "@/components/plano/EditableCell";
+import { CategoriaInfoPopover } from "@/components/plano/CategoriaInfoPopover";
 import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { CATEGORY_META, categoryLabel } from "@/lib/planos/categories";
 import { cn } from "@/lib/utils";
 import type { CategoryRow, ItemRow } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
-
-// Linhas fixas de instrução que pedem "DATAR/ DEADLINE" saem em vermelho
-// no original, junto com a marca MANUAL/PROMPT.
-const EM_VERMELHO = /^DATAR/;
 
 export function CategorySection({
   category,
@@ -55,24 +51,7 @@ export function CategorySection({
           )}
         </div>
 
-        <div className={cn(CELULA, "flex flex-col gap-1 text-sm")}>
-          {meta && (
-            <>
-              <span className="font-bold text-red-600 dark:text-red-400">{meta.modo}</span>
-              {meta.instrucoes.map((linha, i) => (
-                <p
-                  key={i}
-                  className={cn(
-                    "whitespace-pre-wrap",
-                    (meta.destaque || EM_VERMELHO.test(linha)) && "text-red-600 dark:text-red-400"
-                  )}
-                >
-                  <LinkedText text={linha} />
-                </p>
-              ))}
-            </>
-          )}
-        </div>
+        <div className={cn(CELULA, "flex items-start")}>{meta && <CategoriaInfoPopover meta={meta} />}</div>
       </div>
 
       {items.map((item) => (
