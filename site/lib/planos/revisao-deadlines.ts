@@ -5,18 +5,17 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkProrrogacao, type InfoModelo, type ProrrogacaoResult } from "@/lib/ai/prorrogacao";
-import { getDeadlinesLinhaA, type DeadlineEntry, type RevisaoResumo } from "@/lib/planos/deadlines";
+import { getDeadlinesParaConferencia, type DeadlineEntry, type RevisaoResumo } from "@/lib/planos/deadlines";
 import { chaveEvento } from "@/lib/planos/chave-evento";
 import { todaySaoPaulo } from "@/lib/planos/day";
 import type { Database } from "@/lib/supabase/types";
 
 type Client = SupabaseClient<Database>;
 
-// Só os desta semana: deadline da próxima semana ainda não precisa ser
-// vigiado contra prorrogação — quando virar semana atual, entra sozinho.
+// Desta semana até ~2 meses à frente — quanto mais longe, menos urgente,
+// mas ainda vale vigiar contra prorrogação.
 export async function deadlinesParaRevisar(hoje = todaySaoPaulo()): Promise<DeadlineEntry[]> {
-  const { semana } = await getDeadlinesLinhaA(hoje);
-  return semana;
+  return getDeadlinesParaConferencia(hoje);
 }
 
 /** Links já salvos, indexados pela chave do evento. */

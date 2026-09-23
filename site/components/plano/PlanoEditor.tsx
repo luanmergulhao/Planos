@@ -239,34 +239,34 @@ export function PlanoEditor({
             {finalizado ? "ALINHAMENTO FINAL" : iniciado ? "ALINHAMENTO INICIAL" : "DIA NÃO INICIADO"}
           </div>
           <div className={CELULA}>
-            {formatDayNumeric(day)}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="text-sm text-foreground">{formatDayNumeric(day)}</span>
+              {!iniciado && canEdit && (
+                <Button size="sm" onClick={handleStartDay} disabled={startingDay}>
+                  {startingDay ? "Copiando..." : "Iniciar o dia"}
+                </Button>
+              )}
+              {iniciado && planoDay?.alinhamento_inicial_at && (
+                <span>iniciado às {formatTime(planoDay.alinhamento_inicial_at)}</span>
+              )}
+              {finalizado && planoDay?.alinhamento_final_at && (
+                <span>· finalizado às {formatTime(planoDay.alinhamento_final_at)}</span>
+              )}
+              {iniciado && !finalizado && canEdit && (
+                <Button variant="outline" size="sm" onClick={handleEndDay}>
+                  Finalizar o dia
+                </Button>
+              )}
+              {finalizado && canEdit && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReopenDay}>
+                  Desfazer
+                </Button>
+              )}
+            </div>
             {!iniciado && canEdit && previousDayWithItems && (
               <p className="mt-1 text-xs text-muted-foreground">
                 Ao iniciar, copia o Plano de {formatDayNumeric(previousDayWithItems)} sem o que foi riscado.
               </p>
-            )}
-          </div>
-          <div className={cn(CELULA, "flex flex-wrap items-center gap-2 text-xs text-muted-foreground")}>
-            {!iniciado && canEdit && (
-              <Button size="sm" onClick={handleStartDay} disabled={startingDay}>
-                {startingDay ? "Copiando..." : "Iniciar o dia"}
-              </Button>
-            )}
-            {iniciado && planoDay?.alinhamento_inicial_at && (
-              <span>iniciado às {formatTime(planoDay.alinhamento_inicial_at)}</span>
-            )}
-            {finalizado && planoDay?.alinhamento_final_at && (
-              <span>· finalizado às {formatTime(planoDay.alinhamento_final_at)}</span>
-            )}
-            {iniciado && !finalizado && canEdit && (
-              <Button variant="outline" size="sm" onClick={handleEndDay}>
-                Finalizar o dia
-              </Button>
-            )}
-            {finalizado && canEdit && (
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReopenDay}>
-                Desfazer
-              </Button>
             )}
           </div>
         </div>

@@ -106,6 +106,19 @@ export function janelaDaSemana(hoje = todaySaoPaulo()) {
   };
 }
 
+const DIAS_CONFERENCIA = 60;
+
+/**
+ * Todo D/DP desta semana até ~2 meses à frente — janela usada pela
+ * conferência de prorrogação em massa (cron diário e botão "Rodar
+ * prompt" da linha A), mais ampla que os dois blocos que a tela mostra.
+ */
+export async function getDeadlinesParaConferencia(hoje = todaySaoPaulo()): Promise<DeadlineEntry[]> {
+  const { inicioSemana } = janelaDaSemana(hoje);
+  const eventos = [...(await fetchCalendarEvents()), ...deadlinesDeTeste()];
+  return entradasDe(eventos, inicioSemana, shiftDay(hoje, DIAS_CONFERENCIA));
+}
+
 export async function getDeadlinesLinhaA(hoje = todaySaoPaulo()): Promise<DeadlinesLinhaA> {
   const { inicioSemana, fimSemana, fimProximaSemana } = janelaDaSemana(hoje);
 

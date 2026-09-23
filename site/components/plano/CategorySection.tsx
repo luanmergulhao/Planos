@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PlanoItemRow } from "@/components/plano/PlanoItemRow";
 import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
 import { CategoriaInfoPopover } from "@/components/plano/CategoriaInfoPopover";
+import { AtualizarDeadlinesButton } from "@/components/plano/AtualizarDeadlinesButton";
 import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { CATEGORY_META, categoryLabel } from "@/lib/planos/categories";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,13 @@ export function CategorySection({
   return (
     <>
       <div className={LINHA}>
-        <div className={cn(CELULA, ROTULO, "text-sm")}>{categoryLabel(category.code, category.label)}</div>
+        <div className={cn(CELULA, "flex flex-col items-start gap-1.5")}>
+          <div className="flex w-full items-start justify-between gap-1">
+            <span className={cn(ROTULO, "text-sm")}>{categoryLabel(category.code, category.label)}</span>
+            {meta && <CategoriaInfoPopover meta={meta} />}
+          </div>
+          {category.code === "A" && <AtualizarDeadlinesButton />}
+        </div>
 
         <div className={CELULA}>
           {deadlines && <DeadlinesPanel deadlines={deadlines} />}
@@ -50,8 +57,6 @@ export function CategorySection({
             </Button>
           )}
         </div>
-
-        <div className={cn(CELULA, "flex items-start")}>{meta && <CategoriaInfoPopover meta={meta} />}</div>
       </div>
 
       {items.map((item) => (

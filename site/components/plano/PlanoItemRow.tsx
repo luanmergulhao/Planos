@@ -64,6 +64,12 @@ export function PlanoItemRow({
             className={cn(ROTULO, "flex-1")}
             onCommit={(titulo) => commitContent({ titulo })}
           />
+          <DetalhesPopover
+            value={content.links ?? ""}
+            canEdit={canEdit}
+            riscado={item.riscado}
+            onCommit={(links) => commitContent({ links })}
+          />
         </div>
         <div className={cn("mt-1 flex items-center gap-0.5", REVELAR_NO_HOVER)}>
           <Button variant="ghost" size="icon" className="size-7" title="Comentários" onClick={onOpenComments}>
@@ -116,15 +122,6 @@ export function PlanoItemRow({
             )}
           </div>
         )}
-      </div>
-
-      <div className={cn(CELULA, "flex items-start")}>
-        <DetalhesPopover
-          value={content.links ?? ""}
-          canEdit={canEdit}
-          riscado={item.riscado}
-          onCommit={(links) => commitContent({ links })}
-        />
       </div>
     </div>
   );
