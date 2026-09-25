@@ -10,10 +10,10 @@ export default async function PlanoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ dia?: string }>;
+  searchParams: Promise<{ dia?: string; aba?: string }>;
 }) {
   const { id } = await params;
-  const { dia } = await searchParams;
+  const { dia, aba } = await searchParams;
   const day = dia ?? todaySaoPaulo();
   const { supabase, user, profile } = await requireProfile();
 
@@ -46,6 +46,9 @@ export default async function PlanoPage({
     .eq("plano_id", id)
     .eq("day", day)
     .order("item_number");
+
+  // abas de notas do Plano; se a migração ainda não rodou a consulta falha e a página segue sem elas
+  const { data: abas } = await supabase.from("plano_abas").select("*").eq("plano_id", id).order("sort_order");
 
   const { data: planoDay } = await supabase
     .from("plano_days")
@@ -105,6 +108,8 @@ export default async function PlanoPage({
       planoDay={planoDay ?? null}
       previousDayWithItems={previousDayWithItems}
       deadlines={deadlines}
+      abas={abas ?? []}
+      abaInicial={aba ?? null}
       shares={
         (shares ?? []).map((s) => ({
           id: s.id,

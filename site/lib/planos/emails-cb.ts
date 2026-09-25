@@ -18,17 +18,34 @@ function dataBR(iso: string) {
   return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 }
 
-export async function resumirEmailsNoPlano(admin: Client) {
+type Destino = { planoId: string; autorId: string };
+
+// Sem destino explícito (o cron): o Plano de EMAIL_PLANO_DESTINO.
+async function destinoPadrao(admin: Client): Promise<Destino | { motivo: string }> {
   // A caixa de e-mail do trabalho e o login do site costumam ser contas
   // diferentes, então quem recebe as tarefas é configurado à parte.
   const destino = process.env.EMAIL_PLANO_DESTINO ?? process.env.EMAIL_CAIXA;
-  if (!destino) return { lidos: 0, adicionados: 0, motivo: "EMAIL_PLANO_DESTINO não configurado" };
+  if (!destino) return { motivo: "EMAIL_PLANO_DESTINO não configurado" };
 
   const { data: perfil } = await admin.from("profiles").select("id").eq("email", destino).maybeSingle();
-  if (!perfil) return { lidos: 0, adicionados: 0, motivo: `nenhum usuário do site tem o e-mail ${destino}` };
+  if (!perfil) return { motivo: `nenhum usuário do site tem o e-mail ${destino}` };
 
   const { data: plano } = await admin.from("planos").select("id").eq("owner_id", perfil.id).maybeSingle();
-  if (!plano) return { lidos: 0, adicionados: 0, motivo: `${destino} não tem Plano` };
+  if (!plano) return { motivo: `${destino} não tem Plano` };
+
+  return { planoId: plano.id, autorId: perfil.id };
+}
+
+// `destino` vem do botão "Rodar prompt" da linha C: os e-mails caem no
+// Plano que está aberto na tela, em nome de quem clicou.
+export async function resumirEmailsNoPlano(
+  admin: Client,
+  { destino, desdeDias = DIAS_PARA_TRAS }: { destino?: Destino; desdeDias?: number } = {}
+) {
+  const alvo = destino ?? (await destinoPadrao(admin));
+  if ("motivo" in alvo) return { lidos: 0, adicionados: 0, motivo: alvo.motivo };
+  const plano = { id: alvo.planoId };
+  const perfil = { id: alvo.autorId };
 
   const { data: categoria } = await admin
     .from("plano_categories")
@@ -38,7 +55,7 @@ export async function resumirEmailsNoPlano(admin: Client) {
     .maybeSingle();
   if (!categoria) return { lidos: 0, adicionados: 0, motivo: `o Plano não tem a categoria ${CATEGORIA_EMAIL}` };
 
-  const emails = await buscarEmailsDaCB({ desdeDias: DIAS_PARA_TRAS });
+  const emails = await buscarEmailsDaCB({ desdeDias });
   if (emails.length === 0) return { lidos: 0, adicionados: 0 };
 
   const { data: jaResumidos } = await admin

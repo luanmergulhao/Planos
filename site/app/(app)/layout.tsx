@@ -7,6 +7,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Toaster } from "@/components/ui/sonner";
 
+const NAV_LINKS = [
+  { href: "/prompts", label: "Prompts" },
+  { href: "/editais", label: "Triagem" },
+  { href: "/manual", label: "Manual" },
+  { href: "/horas", label: "Horas" },
+  { href: "/notificacoes", label: "Notificações" },
+];
+
 function initials(name: string | null, email: string) {
   const source = name?.trim() || email;
   return source
@@ -35,9 +43,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/planos" className="font-semibold">
               Planos
             </Link>
-            <Link href="/prompts" className="text-sm text-muted-foreground hover:text-foreground">
-              Prompts
-            </Link>
+            <nav className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              {NAV_LINKS.map((link) => (
+                <Link key={link.href} href={link.href} className="hover:text-foreground">
+                  {link.label}
+                </Link>
+              ))}
+              {profile.role === "manager" && (
+                <Link href="/admin/equipe" className="hover:text-foreground">
+                  Equipe
+                </Link>
+              )}
+            </nav>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />

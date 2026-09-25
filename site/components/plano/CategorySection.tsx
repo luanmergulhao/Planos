@@ -6,6 +6,7 @@ import { PlanoItemRow } from "@/components/plano/PlanoItemRow";
 import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
 import { CategoriaInfoPopover } from "@/components/plano/CategoriaInfoPopover";
 import { AtualizarDeadlinesButton } from "@/components/plano/AtualizarDeadlinesButton";
+import { RodarEmailsCBButton } from "@/components/plano/RodarEmailsCBButton";
 import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { CATEGORY_META, categoryLabel } from "@/lib/planos/categories";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,8 @@ export function CategorySection({
   canEdit,
   isManager,
   deadlines,
+  planoId,
+  onRecarregarItens,
   onAddItem,
   onUpdateItem,
   onDeleteItem,
@@ -29,6 +32,8 @@ export function CategorySection({
   canEdit: boolean;
   isManager: boolean;
   deadlines: DeadlinesComRevisao | null;
+  planoId: string;
+  onRecarregarItens: () => void;
   onAddItem: () => void;
   onUpdateItem: (itemId: string, patch: Partial<ItemRow>) => void;
   onDeleteItem: (itemId: string) => void;
@@ -46,6 +51,9 @@ export function CategorySection({
             {meta && <CategoriaInfoPopover meta={meta} />}
           </div>
           {category.code === "A" && <AtualizarDeadlinesButton />}
+          {category.code === "C" && canEdit && (
+            <RodarEmailsCBButton planoId={planoId} onAdicionados={onRecarregarItens} />
+          )}
         </div>
 
         <div className={CELULA}>
