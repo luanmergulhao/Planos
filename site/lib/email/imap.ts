@@ -31,28 +31,66 @@ export function limparCorpo(texto: string): string {
     .trim();
 }
 
-export async function buscarEmailsDaCB({ desdeDias = 3 }: { desdeDias?: number } = {}): Promise<EmailBruto[]> {
-  const host = process.env.EMAIL_IMAP_HOST ?? "imap.gmail.com";
-  const user = process.env.EMAIL_CAIXA;
-  const pass = process.env.EMAIL_SENHA_APP;
+export type Caixa = {
+  email: string;
+  senha: string;
+  /** só e-mails desses remetentes entram */
+  remetentes: string[];
+};
+
+// A caixa do .env, de antes de dar pra conectar contas por Plano.
+export function caixaDoEnv(): Caixa | null {
+  const email = process.env.EMAIL_CAIXA;
+  const senha = process.env.EMAIL_SENHA_APP;
   const remetente = process.env.EMAIL_CB_REMETENTE;
+  if (!email || !senha || !remetente) return null;
+  return { email, senha, remetentes: remetente.split(",").map((r) => r.trim()).filter(Boolean) };
+}
 
-  if (!user || !pass || !remetente) {
-    throw new Error(
-      "Configuração de e-mail incompleta: preencha EMAIL_CAIXA, EMAIL_SENHA_APP e EMAIL_CB_REMETENTE."
-    );
+function conectar(caixa: Pick<Caixa, "email" | "senha">) {
+  const host = process.env.EMAIL_IMAP_HOST ?? "imap.gmail.com";
+  // o Google mostra a senha de app em 4 blocos com espaço
+  const pass = caixa.senha.replace(/\s+/g, "");
+  return new ImapFlow({ host, port: 993, secure: true, auth: { user: caixa.email, pass }, logger: false });
+}
+
+// Traduz a recusa de login do Google, que é o erro mais comum ao conectar.
+export function mensagemDeErro(err: unknown): string {
+  const e = err as { authenticationFailed?: boolean; message?: string };
+  if (e?.authenticationFailed) {
+    return "o Google recusou o login — confira se é a senha de app (16 letras) dessa conta, e não a senha normal";
   }
+  return e?.message ?? "falha ao acessar a caixa de e-mail";
+}
 
-  const client = new ImapFlow({ host, port: 993, secure: true, auth: { user, pass }, logger: false });
+// Só entra e sai: usado ao conectar uma conta, pra avisar na hora se a
+// senha está errada.
+export async function testarCaixa(caixa: Pick<Caixa, "email" | "senha">) {
+  const client = conectar(caixa);
+  await client.connect();
+  await client.logout();
+}
+
+export async function buscarEmailsDaCB(
+  caixa: Caixa,
+  { desdeDias = 3 }: { desdeDias?: number } = {}
+): Promise<EmailBruto[]> {
+  if (caixa.remetentes.length === 0) return [];
+
+  const client = conectar(caixa);
   await client.connect();
 
   try {
     const lock = await client.getMailboxLock("INBOX");
     try {
       const since = new Date(Date.now() - desdeDias * 24 * 60 * 60 * 1000);
+      const deQuem =
+        caixa.remetentes.length === 1
+          ? { from: caixa.remetentes[0] }
+          : { or: caixa.remetentes.map((from) => ({ from })) };
       const emails: EmailBruto[] = [];
 
-      for await (const msg of client.fetch({ from: remetente, since }, { envelope: true, source: true })) {
+      for await (const msg of client.fetch({ ...deQuem, since }, { envelope: true, source: true })) {
         if (!msg.source) continue;
 
         const parsed = await simpleParser(msg.source);
@@ -66,7 +104,7 @@ export async function buscarEmailsDaCB({ desdeDias = 3 }: { desdeDias?: number }
         emails.push({
           id: parsed.messageId ?? `uid-${msg.uid}`,
           assunto: parsed.subject ?? "(sem assunto)",
-          remetente: parsed.from?.text ?? remetente,
+          remetente: parsed.from?.text ?? caixa.remetentes[0],
           data: recebidoEm.toISOString().slice(0, 10),
           corpo,
         });

@@ -7,7 +7,7 @@ import type { ResultadoFinding } from "@/lib/ai/resultados-tipos";
 import { runGuiaTp } from "@/lib/ai/guia-tp";
 import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
 import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
-import { resumirEmailsNoPlano } from "@/lib/planos/emails-cb";
+import { resumirEmailsDeTodosOsPlanos } from "@/lib/planos/emails-cb";
 import { todaySaoPaulo } from "@/lib/planos/day";
 
 export const maxDuration = 60;
@@ -311,12 +311,12 @@ async function notifyDeadlinesDaSemana(admin: ReturnType<typeof createAdminClien
   return teamProfiles.length;
 }
 
-// Coluna C: lê a caixa de e-mail e transforma o que a CB pediu em linhas
+// Coluna C: lê as caixas de e-mail de cada Plano e transforma o que a CB pediu em linhas
 // do Plano. Best-effort igual à busca de resultados — se a caixa não
 // estiver configurada ou o IMAP falhar, o resto da rotina segue.
 async function resumirEmails(admin: ReturnType<typeof createAdminClient>) {
   try {
-    const { adicionados } = await resumirEmailsNoPlano(admin);
+    const { adicionados } = await resumirEmailsDeTodosOsPlanos(admin);
     return adicionados;
   } catch {
     return 0;

@@ -24,6 +24,9 @@ export function RodarEmailsCBButton({ planoId, onAdicionados }: { planoId: strin
         toast.error("Não deu pra ler os e-mails: " + (data.error ?? res.status));
         return;
       }
+      for (const falha of (data.erros ?? []) as { email: string; erro: string }[]) {
+        toast.error(`${falha.email}: ${falha.erro}`);
+      }
       if (data.lidos === 0) toast.success("Nenhum e-mail da CB nos últimos 7 dias.");
       else if (data.adicionados === 0) toast.success(`${data.lidos} e-mail(s) lido(s), nenhum novo.`);
       else toast.success(`${data.adicionados} e-mail(s) novo(s) no Plano.`);

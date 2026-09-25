@@ -7,6 +7,7 @@ import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
 import { CategoriaInfoPopover } from "@/components/plano/CategoriaInfoPopover";
 import { AtualizarDeadlinesButton } from "@/components/plano/AtualizarDeadlinesButton";
 import { RodarEmailsCBButton } from "@/components/plano/RodarEmailsCBButton";
+import { CaixasEmailDialog } from "@/components/plano/CaixasEmailDialog";
 import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { CATEGORY_META, categoryLabel } from "@/lib/planos/categories";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,10 @@ export function CategorySection({
           </div>
           {category.code === "A" && <AtualizarDeadlinesButton />}
           {category.code === "C" && canEdit && (
-            <RodarEmailsCBButton planoId={planoId} onAdicionados={onRecarregarItens} />
+            <div className="flex flex-wrap items-center gap-1">
+              <RodarEmailsCBButton planoId={planoId} onAdicionados={onRecarregarItens} />
+              <CaixasEmailDialog planoId={planoId} />
+            </div>
           )}
         </div>
 

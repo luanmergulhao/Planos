@@ -313,6 +313,7 @@ export type Database = {
       email_resumos: {
         Row: {
           message_id: string;
+          plano_id: string | null;
           plano_item_id: string | null;
           assunto: string;
           data_email: string;
@@ -331,6 +332,34 @@ export type Database = {
             columns: ["plano_item_id"];
             isOneToOne: false;
             referencedRelation: "plano_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      plano_caixas_email: {
+        Row: {
+          id: string;
+          plano_id: string;
+          email: string;
+          senha_cifrada: string;
+          remetentes: string[];
+          ultima_leitura_at: string | null;
+          ultimo_erro: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["plano_caixas_email"]["Row"]> & {
+          plano_id: string;
+          email: string;
+          senha_cifrada: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["plano_caixas_email"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "plano_caixas_email_plano_id_fkey";
+            columns: ["plano_id"];
+            isOneToOne: false;
+            referencedRelation: "planos";
             referencedColumns: ["id"];
           },
         ];
