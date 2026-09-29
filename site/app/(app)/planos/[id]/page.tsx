@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth/current-user";
 import { PlanoEditor } from "@/components/plano/PlanoEditor";
 import { todaySaoPaulo } from "@/lib/planos/day";
-import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
+import { getDeadlinesLinhaA, tirarVencidos } from "@/lib/planos/deadlines";
 import { getLinksSalvos, getRevisoesRecentes } from "@/lib/planos/revisao-deadlines";
 
 export default async function PlanoPage({
@@ -87,7 +87,7 @@ export default async function PlanoPage({
     getRevisoesRecentes(supabase, entradasLinhaA),
     getLinksSalvos(supabase, entradasLinhaA),
   ]);
-  const deadlines = { ...deadlinesLinhaA, revisoes, links };
+  const deadlines = { ...tirarVencidos(deadlinesLinhaA, revisoes), revisoes, links };
 
   const { data: ownerProfile } = await supabase
     .from("profiles")

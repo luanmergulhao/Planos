@@ -42,7 +42,7 @@ export async function getRevisoesRecentes(
 
   const { data } = await client
     .from("deadline_revisoes")
-    .select("titulo_evento, deadline_agenda, status, novo_deadline, novo_deadline_texto, evidencia, fonte_link, revisado_em")
+    .select("titulo_evento, deadline_agenda, status, novo_deadline, novo_deadline_texto, evidencia, fonte_link, revisado_em, revisado_dia")
     .in("chave_evento", deadlines.map((d) => chaveEvento(d.titulo)))
     .order("revisado_em", { ascending: false });
 
@@ -50,14 +50,17 @@ export async function getRevisoesRecentes(
   for (const r of data ?? []) {
     // vem da mais recente pra mais antiga: a primeira de cada deadline
     // é a última revisão feita
-    porDeadline[`${r.titulo_evento}|${r.deadline_agenda}`] ??= {
+    const atual = (porDeadline[`${r.titulo_evento}|${r.deadline_agenda}`] ??= {
       status: r.status,
       novo_deadline: r.novo_deadline,
       novo_deadline_texto: r.novo_deadline_texto,
       evidencia: r.evidencia,
       fonte_link: r.fonte_link,
       revisado_em: r.revisado_em,
-    };
+      datas: [],
+    });
+    // uma linha por dia (o upsert é por revisado_dia), então não repete
+    atual.datas.unshift(r.revisado_dia);
   }
   return porDeadline;
 }
@@ -98,6 +101,7 @@ async function gravarRevisao(
     evidencia: resultado.evidencia,
     fonte_link: resultado.fonte_link,
     revisado_em: revisadoEm,
+    datas: [hoje],
   };
 }
 

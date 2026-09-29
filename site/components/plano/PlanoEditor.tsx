@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { CategorySection } from "@/components/plano/CategorySection";
@@ -14,6 +15,7 @@ import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { shiftDay } from "@/lib/planos/day";
+import { planoParaWhatsApp } from "@/lib/planos/whatsapp";
 import { cn } from "@/lib/utils";
 import type { CategoryRow, ItemRow, PlanoAbaRow, PlanoDayRow, PlanoRow, ShareEntry, TeamProfile } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
@@ -253,6 +255,22 @@ export function PlanoEditor({
   const iniciado = !!planoDay?.alinhamento_inicial_at;
   const finalizado = !!planoDay?.alinhamento_final_at;
 
+  async function handleCopiarWhatsApp() {
+    const texto = planoParaWhatsApp({
+      alinhamento: finalizado ? "ALINHAMENTO FINAL" : "ALINHAMENTO INICIAL",
+      dia: day,
+      categorias: categories,
+      itens: items,
+      deadlines,
+    });
+    try {
+      await navigator.clipboard.writeText(texto);
+      toast.success("Plano copiado — é só colar no WhatsApp.");
+    } catch {
+      toast.error("O navegador bloqueou a cópia. Tente de novo clicando no botão.");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -335,6 +353,18 @@ export function PlanoEditor({
                   {finalizado && canEdit && (
                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReopenDay}>
                       Desfazer
+                    </Button>
+                  )}
+                  {iniciado && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      title="Copia o Plano do dia já formatado pra colar no grupo do WhatsApp"
+                      onClick={handleCopiarWhatsApp}
+                    >
+                      <Copy className="size-3.5" />
+                      Copiar pro WhatsApp
                     </Button>
                   )}
                 </div>

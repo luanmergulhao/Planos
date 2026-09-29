@@ -37,6 +37,9 @@ export type RevisaoResumo = {
   evidencia: string | null;
   fonte_link: string | null;
   revisado_em: string;
+  /** Todos os dias (AAAA-MM-DD) em que esse deadline foi conferido, do
+   *  mais antigo pro mais recente — vira o "Revisão: xx/xx, xx/xx". */
+  datas: string[];
 };
 
 export type DeadlinesComRevisao = DeadlinesLinhaA & {
@@ -117,6 +120,22 @@ export async function getDeadlinesParaConferencia(hoje = todaySaoPaulo()): Promi
   const { inicioSemana } = janelaDaSemana(hoje);
   const eventos = [...(await fetchCalendarEvents()), ...deadlinesDeTeste()];
   return entradasDe(eventos, inicioSemana, shiftDay(hoje, DIAS_CONFERENCIA));
+}
+
+/**
+ * Deadline fica na linha A até o próprio dia. Do dia seguinte em diante
+ * só continua se a última conferência achou prorrogação — senão o edital
+ * acabou e sai da lista. A conferência continua rodando pros vencidos da
+ * janela (ver getDeadlinesParaConferencia), é ela que decide se ficam.
+ */
+export function tirarVencidos<T extends DeadlinesLinhaA>(
+  linhaA: T,
+  revisoes: Record<string, RevisaoResumo>,
+  hoje = todaySaoPaulo()
+): T {
+  const segue = (e: DeadlineEntry) =>
+    e.dia >= hoje || revisoes[`${e.titulo}|${e.dia}`]?.status === "prorrogado";
+  return { ...linhaA, semana: linhaA.semana.filter(segue), proximaSemana: linhaA.proximaSemana.filter(segue) };
 }
 
 export async function getDeadlinesLinhaA(hoje = todaySaoPaulo()): Promise<DeadlinesLinhaA> {

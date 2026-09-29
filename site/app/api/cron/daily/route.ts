@@ -6,7 +6,8 @@ import { searchResultados } from "@/lib/ai/resultados";
 import type { ResultadoFinding } from "@/lib/ai/resultados-tipos";
 import { runGuiaTp } from "@/lib/ai/guia-tp";
 import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
-import { getDeadlinesLinhaA } from "@/lib/planos/deadlines";
+import { getDeadlinesLinhaA, tirarVencidos } from "@/lib/planos/deadlines";
+import { getRevisoesRecentes } from "@/lib/planos/revisao-deadlines";
 import { resumirEmailsDeTodosOsPlanos } from "@/lib/planos/emails-cb";
 import { todaySaoPaulo } from "@/lib/planos/day";
 
@@ -277,7 +278,9 @@ async function notifyDeadlinesDaSemana(admin: ReturnType<typeof createAdminClien
   const ehSegunda = new Date(hoje + "T12:00:00Z").getUTCDay() === 1;
   if (!ehSegunda) return 0;
 
-  const { semana, proximaSemana } = await getDeadlinesLinhaA(hoje);
+  const linhaA = await getDeadlinesLinhaA(hoje);
+  const revisoes = await getRevisoesRecentes(admin, [...linhaA.semana, ...linhaA.proximaSemana]);
+  const { semana, proximaSemana } = tirarVencidos(linhaA, revisoes, hoje);
   if (semana.length === 0 && proximaSemana.length === 0) return 0;
 
   const { data: teamProfiles } = await admin.from("profiles").select("id");

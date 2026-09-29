@@ -20,9 +20,8 @@ function safeHref(url: string | null) {
   return trimmed && /^https?:\/\//i.test(trimmed) ? trimmed : null;
 }
 
-function ResultadoRevisao({ revisao, titulo }: { revisao: RevisaoResumo; titulo: string }) {
+function Situacao({ revisao, titulo }: { revisao: RevisaoResumo; titulo: string }) {
   const fonte = safeHref(revisao.fonte_link);
-  const revisadoEm = diaCurto(revisao.revisado_em.slice(0, 10));
   const jaEhDP = /^DP\s/i.test(titulo);
 
   if (revisao.status === "prorrogado" && revisao.novo_deadline) {
@@ -51,24 +50,61 @@ function ResultadoRevisao({ revisao, titulo }: { revisao: RevisaoResumo; titulo:
     );
   }
 
-  if (revisao.status === "mantido") {
-    return (
-      <span className="text-xs text-muted-foreground" title={revisao.evidencia ?? undefined}>
-        Revisão: {revisadoEm}
-      </span>
-    );
-  }
-
   return (
     <span className="text-xs text-muted-foreground" title={revisao.evidencia ?? undefined}>
-      não confirmado · revisão {revisadoEm}
+      {revisao.status === "mantido" ? "Não prorrogado" : "Não confirmado"}
     </span>
+  );
+}
+
+// Situação da última conferência + todos os dias em que foi feita, como a
+// instrução da linha A pede ("Revisão: xx/xx, xx/xx").
+function ResultadoRevisao({ revisao, titulo }: { revisao: RevisaoResumo | undefined; titulo: string }) {
+  if (!revisao) {
+    return <span className="text-xs text-muted-foreground">Sem revisão</span>;
+  }
+  return (
+    <>
+      <Situacao revisao={revisao} titulo={titulo} />
+      <span className="text-xs text-muted-foreground">Revisão: {revisao.datas.map(diaCurto).join(", ")}</span>
+    </>
   );
 }
 
 // O título do evento já costuma trazer a data ("... 2026 30/09"); só
 // acrescenta o dia quando não traz, pra linha sempre dizer a data.
 const TEM_DATA = /\d{1,2}\/\d{1,2}/;
+const DATA_NO_TITULO = /\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/;
+
+// Prorrogou: a data antiga fica riscada e a nova vem ao lado — no Plano
+// do Google a data anterior nunca é apagada, só tachada.
+function TituloDoDeadline({ entrada, novoDeadline }: { entrada: DeadlineEntry; novoDeadline: string | null }) {
+  if (!novoDeadline) {
+    return (
+      <span>
+        {entrada.titulo}
+        {TEM_DATA.test(entrada.titulo) ? "" : ` ${diaCurto(entrada.dia)}`}
+      </span>
+    );
+  }
+
+  const nova = <strong className="text-amber-700 dark:text-amber-400">{diaCurto(novoDeadline)}</strong>;
+  const m = DATA_NO_TITULO.exec(entrada.titulo);
+  if (!m) {
+    return (
+      <span>
+        {entrada.titulo} <s>{diaCurto(entrada.dia)}</s> {nova}
+      </span>
+    );
+  }
+  return (
+    <span>
+      {entrada.titulo.slice(0, m.index)}
+      <s>{m[0]}</s> {nova}
+      {entrada.titulo.slice(m.index + m[0].length)}
+    </span>
+  );
+}
 
 function Cabecalho({
   entrada,
@@ -81,17 +117,17 @@ function Cabecalho({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-      <span>
-        {entrada.titulo}
-        {TEM_DATA.test(entrada.titulo) ? "" : ` ${diaCurto(entrada.dia)}`}
-      </span>
+      <TituloDoDeadline
+        entrada={entrada}
+        novoDeadline={revisao?.status === "prorrogado" ? revisao.novo_deadline : null}
+      />
       {entrada.divergencia && (
         <Badge variant="destructive" className="gap-1">
           <AlertTriangle className="size-3" />
           título diz {diaCurto(entrada.divergencia)}
         </Badge>
       )}
-      {revisao && <ResultadoRevisao revisao={revisao} titulo={entrada.titulo} />}
+      <ResultadoRevisao revisao={revisao} titulo={entrada.titulo} />
       {extra}
     </div>
   );
@@ -160,7 +196,11 @@ function LinhaComConferencia({
         return;
       }
 
-      setRevisao(data.revisao);
+      // soma o dia de hoje às revisões que já apareciam na linha
+      setRevisao((antes) => ({
+        ...data.revisao,
+        datas: [...new Set([...(antes?.datas ?? []), ...data.revisao.datas])].sort(),
+      }));
 
       const resumo =
         data.revisao.status === "prorrogado"
