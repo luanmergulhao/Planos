@@ -78,17 +78,23 @@ Regras obrigatórias:
 - evidencia: uma frase curta dizendo onde está a informação (ex: "Aviso de prorrogação publicado em 10/09 na página do edital").
 - fonte_link: link direto da página ou documento onde encontrou a informação, ou null.`;
 
-const RESUMO_EMAIL = `Você organiza a caixa de entrada de uma produtora cultural. Os e-mails abaixo foram enviados pela CB (Cândida), que coordena a equipe. Para cada e-mail, extraia o que a equipe precisa fazer.
+const RESUMO_EMAIL = `Você organiza a caixa de entrada de uma produtora cultural. Os e-mails abaixo chegaram da conta da CB (Cândida), que coordena a equipe. Para cada e-mail, extraia o que a equipe precisa fazer.
+
+Primeiro leia o e-mail inteiro e entenda o contexto. Depois escreva a tarefa como uma instrução que a pessoa consegue executar sem abrir o e-mail.
 
 Regras obrigatórias:
-- NUNCA copie o e-mail inteiro. "tarefa_solicitada" tem no máximo duas frases curtas, começando por um verbo no infinitivo (ex: "Enviar a planilha de orçamento revisada até sexta").
+- NUNCA copie o e-mail inteiro. Mas também nunca resuma a ponto de perder o sentido.
+- A tarefa precisa ser ESPECÍFICA: o que fazer, em qual documento/edital/arquivo, para quem ou onde enviar, e até quando — sempre que o e-mail disser. Use os nomes exatos que aparecem no e-mail (edital, guia, pasta, pessoa).
+  - Ruim: "Enviar o documento."
+  - Bom: "Enviar o orçamento revisado do edital Natura Musical para a CB por e-mail, com link do Drive, até 05/10."
+  - Se o e-mail pede algo mas não diz para quem, onde ou quando, escreva a tarefa com o que existe e termine com "(e-mail não diz para quem)" ou "(e-mail não diz o prazo)". Não invente.
+- Quando o pedido é para uma pessoa específica, comece pelo nome dela, como está no e-mail (ex: "Fulana: preparar o e-mail para o patrocinador.").
+- Se o e-mail pedir várias coisas, junte todas em "tarefa_solicitada", uma por item, separadas por ponto e vírgula.
 - "titulo": o assunto do e-mail, limpo de prefixos como "Re:", "Res:", "Fwd:" e "Enc:".
 - "data": a data de recebimento, no formato AAAA-MM-DD.
-- "tem_tarefa": true só quando há algo concreto pedido à equipe. Aviso, agradecimento, confirmação ou e-mail só informativo é false.
+- "tem_tarefa": true só quando há algo concreto para a equipe FAZER. Aviso, agradecimento, confirmação, envio de documento só para conhecimento ou e-mail só informativo é false.
 - Quando "tem_tarefa" for false, deixe "tarefa_solicitada" como string vazia.
-- "eh_comentario": true APENAS quando o e-mail for notificação automática de comentário em documento (Google Docs, Drive, "comentou em", "respondeu a um comentário", "mentioned you"). E-mail escrito pela própria CB é sempre false, mesmo que fale sobre um comentário.
-- "eh_comentario" e "tem_tarefa" são independentes: um e-mail informativo escrito por ela tem "eh_comentario" false e "tem_tarefa" false.
-- Se o e-mail pedir várias coisas, junte no mesmo "tarefa_solicitada", separadas por ponto e vírgula.
+- "eh_automatico": true quando o e-mail é notificação automática de sistema e não foi escrito pela CB: comentário ou edição em documento (Google Docs, Drive, "comentou em", "editou", "mentioned you"), arquivo ou pasta compartilhado com você, convite/aceite/recusa de agenda ("Aceito:", "Recusado:", "Convite:"), aviso de sistema. E-mail escrito pela própria CB é sempre false.
 - Não invente prazo, valor nem nome que não esteja escrito no e-mail.
 - Devolva um item por e-mail, com o campo "id" EXATAMENTE igual ao fornecido.
 - Responda em português do Brasil.

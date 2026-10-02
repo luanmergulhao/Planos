@@ -19,6 +19,7 @@ import { planoParaWhatsApp } from "@/lib/planos/whatsapp";
 import { cn } from "@/lib/utils";
 import type { CategoryRow, ItemRow, PlanoAbaRow, PlanoDayRow, PlanoRow, ShareEntry, TeamProfile } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
+import type { PlanoItemContent } from "@/lib/supabase/types";
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -153,8 +154,11 @@ export function PlanoEditor({
         .eq("day", previousDayWithItems)
         .eq("riscado", false);
 
-      if (previousItems && previousItems.length > 0) {
-        const toInsert = previousItems.map((it) => ({
+      // e-mail da C marcado como feito também fica pra trás
+      const aCopiar = (previousItems ?? []).filter((it) => !(it.content as PlanoItemContent | null)?.feito);
+
+      if (aCopiar.length > 0) {
+        const toInsert = aCopiar.map((it) => ({
           plano_id: plano.id,
           category_id: it.category_id,
           item_number: it.item_number,

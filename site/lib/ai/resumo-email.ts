@@ -25,9 +25,9 @@ export type ResumoEmail = {
   tarefa_solicitada: string;
   /** false quando o e-mail é só aviso, sem nada pedido */
   tem_tarefa: boolean;
-  /** notificação automática de comentário em documento — essas ficam
-   *  fora do Plano, porque comentário já tem lugar próprio lá */
-  eh_comentario: boolean;
+  /** notificação de sistema (comentário em documento, compartilhamento,
+   *  aceite de agenda) — fica fora do Plano */
+  eh_automatico: boolean;
 };
 
 const RESPONSE_SCHEMA = {
@@ -43,9 +43,9 @@ const RESPONSE_SCHEMA = {
           data: { type: "STRING", description: "AAAA-MM-DD" },
           tarefa_solicitada: { type: "STRING" },
           tem_tarefa: { type: "BOOLEAN" },
-          eh_comentario: { type: "BOOLEAN" },
+          eh_automatico: { type: "BOOLEAN" },
         },
-        required: ["id", "titulo", "data", "tarefa_solicitada", "tem_tarefa", "eh_comentario"],
+        required: ["id", "titulo", "data", "tarefa_solicitada", "tem_tarefa", "eh_automatico"],
       },
     },
   },

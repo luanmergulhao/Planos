@@ -85,26 +85,31 @@ async function processar(
   let adicionados = 0;
 
   for (const resumo of resumos) {
-    // notificação de comentário não vira tarefa: comentário já tem lugar
-    // próprio no Plano
-    if (resumo.eh_comentario) continue;
+    // Só vira linha o que tem tarefa. Informativo e notificação de sistema
+    // (comentário, compartilhamento, aceite de agenda) ficam registrados
+    // como já lidos, pra não voltarem na próxima rodada, mas fora do Plano.
+    const entra = resumo.tem_tarefa && !resumo.eh_automatico && resumo.tarefa_solicitada.trim() !== "";
 
-    const { data: item } = await admin
-      .from("plano_items")
-      .insert({
-        plano_id: planoId,
-        category_id: categoria.id,
-        day: hoje,
-        content: {
-          titulo: resumo.titulo,
-          tarefa: resumo.tem_tarefa ? resumo.tarefa_solicitada : "(sem tarefa — e-mail informativo)",
-          links: `E-mail da CB recebido em ${dataBR(resumo.data)}`,
-        },
-        created_by: autorId,
-        updated_by: autorId,
-      })
-      .select("id")
-      .single();
+    const { data: item } = entra
+      ? await admin
+          .from("plano_items")
+          .insert({
+            plano_id: planoId,
+            category_id: categoria.id,
+            day: hoje,
+            content: {
+              titulo: resumo.titulo,
+              tarefa: resumo.tarefa_solicitada,
+              links: `E-mail da CB recebido em ${dataBR(resumo.data)}`,
+              origem: "email",
+              data_email: resumo.data,
+            },
+            created_by: autorId,
+            updated_by: autorId,
+          })
+          .select("id")
+          .single()
+      : { data: null };
 
     await admin.from("email_resumos").insert({
       message_id: resumo.id,
@@ -112,10 +117,10 @@ async function processar(
       plano_item_id: item?.id ?? null,
       assunto: resumo.titulo,
       data_email: resumo.data,
-      tarefa: resumo.tem_tarefa ? resumo.tarefa_solicitada : null,
+      tarefa: entra ? resumo.tarefa_solicitada : null,
     });
 
-    adicionados++;
+    if (entra) adicionados++;
   }
 
   return { lidos: emails.length, adicionados, erros };

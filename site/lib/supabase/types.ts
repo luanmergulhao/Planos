@@ -11,6 +11,14 @@ export type PlanoItemContent = {
   titulo?: string;
   tarefa?: string;
   links?: string;
+  /** "email": veio da rotina da linha C e aparece na lista E-MAILS, não
+   *  como linha numerada */
+  origem?: "email";
+  /** data do e-mail, AAAA-MM-DD */
+  data_email?: string;
+  /** e-mail resolvido: aparece riscado no dia e não vai pra cópia do
+   *  dia seguinte. Separado do `riscado` (que só a CB usa) de propósito. */
+  feito?: boolean;
 };
 
 export type ItemStatus = "pendente" | "em_andamento" | "concluido" | "urgente";

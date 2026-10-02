@@ -5,6 +5,7 @@
 import { categoryLabel, itemCode } from "@/lib/planos/categories";
 import type { DeadlineEntry, DeadlinesComRevisao, RevisaoResumo } from "@/lib/planos/deadlines";
 import type { PlanoItemContent } from "@/lib/supabase/types";
+import { diaDoEmail, ehLinhaDeEmail } from "@/lib/planos/email-itens";
 
 type Categoria = { id: string; code: string; label: string };
 type Item = { category_id: string; item_number: number; content: unknown; deadline_at: string | null; riscado: boolean };
@@ -66,6 +67,12 @@ function blocoDeadlines(deadlines: DeadlinesComRevisao) {
 
 function linhaItem(codigoCategoria: string, item: Item) {
   const content = (item.content ?? {}) as PlanoItemContent;
+
+  if (ehLinhaDeEmail(content)) {
+    const dia = diaDoEmail(content);
+    const texto = [dia, content.titulo?.trim()].filter(Boolean).join(" ") + (content.tarefa ? ` — ${content.tarefa.trim()}` : "");
+    return "• " + (content.feito ? marcar(texto, "~") : texto);
+  }
   const cabeca = [`${itemCode(codigoCategoria, item.item_number)}.`, content.titulo?.trim()].filter(Boolean).join(" ");
   const partes = [cabeca];
   if (content.tarefa?.trim()) partes.push(content.tarefa.trim());

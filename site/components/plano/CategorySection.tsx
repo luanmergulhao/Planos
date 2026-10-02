@@ -4,15 +4,18 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlanoItemRow } from "@/components/plano/PlanoItemRow";
 import { DeadlinesPanel } from "@/components/plano/DeadlinesPanel";
+import { EmailsPanel } from "@/components/plano/EmailsPanel";
 import { CategoriaInfoPopover } from "@/components/plano/CategoriaInfoPopover";
 import { AtualizarDeadlinesButton } from "@/components/plano/AtualizarDeadlinesButton";
 import { RodarEmailsCBButton } from "@/components/plano/RodarEmailsCBButton";
 import { CaixasEmailDialog } from "@/components/plano/CaixasEmailDialog";
 import { CELULA, LINHA, ROTULO } from "@/components/plano/grid";
 import { CATEGORY_META, categoryLabel } from "@/lib/planos/categories";
+import { ehLinhaDeEmail } from "@/lib/planos/email-itens";
 import { cn } from "@/lib/utils";
 import type { CategoryRow, ItemRow } from "@/components/plano/types";
 import type { DeadlinesComRevisao } from "@/lib/planos/deadlines";
+import type { PlanoItemContent } from "@/lib/supabase/types";
 
 export function CategorySection({
   category,
@@ -43,6 +46,12 @@ export function CategorySection({
 }) {
   const meta = CATEGORY_META[category.code];
 
+  // Na C, o que veio da rotina de e-mails vira a lista E-MAILS DA CB; o
+  // que alguém digitou à mão continua como linha numerada.
+  const ehC = category.code === "C";
+  const emails = ehC ? items.filter((i) => ehLinhaDeEmail(i.content as PlanoItemContent)) : [];
+  const linhas = ehC ? items.filter((i) => !ehLinhaDeEmail(i.content as PlanoItemContent)) : items;
+
   return (
     <>
       <div className={LINHA}>
@@ -62,6 +71,9 @@ export function CategorySection({
 
         <div className={CELULA}>
           {deadlines && <DeadlinesPanel deadlines={deadlines} />}
+          {ehC && (
+            <EmailsPanel items={emails} canEdit={canEdit} onUpdateItem={onUpdateItem} onDeleteItem={onDeleteItem} />
+          )}
           {canEdit && (
             <Button variant="ghost" size="sm" className="-ml-1 mt-1 h-7 text-xs text-muted-foreground" onClick={onAddItem}>
               <Plus className="size-3.5" />
@@ -71,7 +83,7 @@ export function CategorySection({
         </div>
       </div>
 
-      {items.map((item) => (
+      {linhas.map((item) => (
         <PlanoItemRow
           key={item.id}
           item={item}
