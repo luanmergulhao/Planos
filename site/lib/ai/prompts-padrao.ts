@@ -165,7 +165,7 @@ export const PROMPTS_PADRAO: PromptPadrao[] = [
     id: "resultados",
     nome: "Busca de resultados",
     descricao:
-      "Procura na internet o resultado dos editais já enviados (fases D e DP). Roda sozinho uma vez por dia e pelo botão 'Buscar resultados'.",
+      "Procura na internet o resultado dos editais já enviados (fases D e DP). Roda sozinho a cada 2 dias e pelo botão 'Buscar resultados'.",
     variaveis: ["lista"],
     conteudo: RESULTADOS,
   },
@@ -173,7 +173,7 @@ export const PROMPTS_PADRAO: PromptPadrao[] = [
     id: "prorrogacao",
     nome: "Conferência de prorrogação",
     descricao:
-      "Confere se o prazo de um deadline da semana foi prorrogado, mantido ou encerrado. Roda sozinho todo dia e pelo botão 'Conferir prorrogação' na linha A do Plano.",
+      "Confere se o prazo de um deadline da semana foi prorrogado, mantido ou encerrado. Roda sozinho a cada 2 dias e pelo botão 'Conferir prorrogação' na linha A do Plano.",
     variaveis: ["titulo", "deadline", "origem"],
     conteudo: PRORROGACAO,
   },
@@ -181,7 +181,7 @@ export const PROMPTS_PADRAO: PromptPadrao[] = [
     id: "resumo_email",
     nome: "Resumo dos e-mails da CB",
     descricao:
-      "Resume o que a CB pediu por e-mail e vira linha na coluna C do Plano. Roda sozinho uma vez por dia.",
+      "Resume o que a CB pediu por e-mail e vira a lista E-MAILS na linha C do Plano. Roda sozinho a cada 2 dias e pelo botão 'Rodar prompt' da linha C.",
     variaveis: ["lista"],
     conteudo: RESUMO_EMAIL,
   },
@@ -189,7 +189,7 @@ export const PROMPTS_PADRAO: PromptPadrao[] = [
     id: "guia",
     nome: "GUIA (ficha de abertura)",
     descricao:
-      "Segunda etapa da abertura de um edital: preenche a ficha de abertura, continuando a conversa que começou com a Triagem. Roda sozinho todo dia, pros editais em Triagem que ainda não têm GUIA.",
+      "Segunda etapa da abertura de um edital: preenche a ficha de abertura, continuando a conversa que começou com a Triagem. Roda sozinho a cada 2 dias, pros editais em Triagem que ainda não têm GUIA.",
     variaveis: [],
     conteudo: GUIA,
   },
@@ -197,7 +197,7 @@ export const PROMPTS_PADRAO: PromptPadrao[] = [
     id: "tp",
     nome: "TP (triagem profunda)",
     descricao:
-      "Terceira etapa da abertura: aprofunda a análise do edital com as perguntas de proponência, lei, orçamento etc. Roda sozinho todo dia, depois do GUIA.",
+      "Terceira etapa da abertura: aprofunda a análise do edital com as perguntas de proponência, lei, orçamento etc. Roda sozinho a cada 2 dias, depois do GUIA.",
     variaveis: [],
     conteudo: TP,
   },

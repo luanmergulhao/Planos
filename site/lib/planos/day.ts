@@ -19,3 +19,14 @@ export function shiftDay(day: string, deltaDays: number): string {
   d.setDate(d.getDate() + deltaDays);
   return d.toISOString().slice(0, 10);
 }
+
+/**
+ * Os agentes (prompts que rodam sozinhos) rodam um dia sim, um dia não.
+ * Conta os dias desde uma data fixa em vez de olhar o dia do mês, pra
+ * alternância não quebrar na virada de mês (31 → 1). Os botões de cada
+ * agente continuam rodando na hora, em qualquer dia.
+ */
+export function ehDiaDeAgente(dia = todaySaoPaulo()): boolean {
+  const dias = Math.round(Date.parse(dia + "T00:00:00Z") / 86_400_000);
+  return dias % 2 === 0;
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runRevisaoDeadlines } from "@/lib/planos/revisao-deadlines";
+import { ehDiaDeAgente } from "@/lib/planos/day";
 
 export const maxDuration = 60;
 
@@ -12,6 +13,9 @@ export async function GET(request: Request) {
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  // agente de prorrogação: um dia sim, um dia não (o botão roda a qualquer hora)
+  if (!ehDiaDeAgente()) return NextResponse.json({ ok: true, diaDeAgente: false });
 
   const resultado = await runRevisaoDeadlines(createAdminClient());
   return NextResponse.json({ ok: true, ...resultado });

@@ -9,7 +9,7 @@ import { HEARTBEAT_TIMEOUT_MINUTES } from "@/lib/time/session";
 import { getDeadlinesLinhaA, tirarVencidos } from "@/lib/planos/deadlines";
 import { getRevisoesRecentes } from "@/lib/planos/revisao-deadlines";
 import { resumirEmailsDeTodosOsPlanos } from "@/lib/planos/emails-cb";
-import { todaySaoPaulo } from "@/lib/planos/day";
+import { ehDiaDeAgente, todaySaoPaulo } from "@/lib/planos/day";
 
 export const maxDuration = 60;
 
@@ -354,6 +354,11 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
 
+  // Agentes (R, e-mails da C, GUIA/TP) rodam um dia sim, um dia não; o
+  // resto (resumo, lembretes de prazo, ponto) continua todo dia.
+  const diaDeAgente = ehDiaDeAgente();
+  const agente = <T,>(rodar: () => Promise<T>, pulado: T) => (diaDeAgente ? rodar() : Promise.resolve(pulado));
+
   const [
     planoDeadlinesNotified,
     editalDeadlinesNotified,
@@ -368,14 +373,15 @@ export async function GET(request: Request) {
     scanEditalDeadlines(admin),
     sendDailyDigests(admin),
     sweepStaleSessions(admin),
-    searchAndNotifyResultados(admin),
+    agente(() => searchAndNotifyResultados(admin), 0),
     notifyDeadlinesDaSemana(admin),
-    resumirEmails(admin),
-    runGuiaTpDiario(admin),
+    agente(() => resumirEmails(admin), 0),
+    agente(() => runGuiaTpDiario(admin), 0),
   ]);
 
   return NextResponse.json({
     ok: true,
+    diaDeAgente,
     planoDeadlinesNotified,
     editalDeadlinesNotified,
     digestsSent,
